@@ -1891,10 +1891,6 @@ int dtcp_sv_update(struct dtcp * dtcp, const struct pci * pci)
                 LOG_ERR("No instance passed, cannot run policy");
                 return -1;
         }
-        if (!pci) {
-                LOG_ERR("No PCI instance passed, cannot run policy");
-                return -1;
-        }
 
         dtcp_cfg = dtcp_config_get(dtcp);
         if (!dtcp_cfg)

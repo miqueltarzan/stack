@@ -151,10 +151,6 @@ default_receiving_flow_control(struct dtcp_ps * ps, const struct pci * pci)
                 LOG_ERR("No instance passed, cannot run policy");
                 return -1;
         }
-        if (!pci) {
-                LOG_ERR("No PCI passed, cannot run policy");
-                return -1;
-        }
 
         pdu = pdu_ctrl_generate(dtcp, PDU_TYPE_FC);
         if (!pdu)
@@ -177,10 +173,6 @@ default_rcvr_flow_control(struct dtcp_ps * ps, const struct pci * pci)
 
         if (!dtcp) {
                 LOG_ERR("No instance passed, cannot run policy");
-                return -1;
-        }
-        if (!pci) {
-                LOG_ERR("No PCI passed, cannot run policy");
                 return -1;
         }
 

@@ -1539,7 +1539,6 @@ int dtp_receive(struct dtp * instance,
         seq_num_t        max_sdu_gap;
         unsigned long    flags;
         struct rqueue *  to_post;
-        /*struct rqueue *       to_post;*/
 
 	struct dt_cons *	dc = 0;
 	struct efcp_container *	ec = 0;
@@ -1740,7 +1739,6 @@ int dtp_receive(struct dtp * instance,
                 return -1;
         }
 
-        spin_lock_irqsave(&instance->seqq->lock, flags);
         to_post = rqueue_create_ni();
         if (!to_post) {
                 LOG_ERR("Could not create to_post queue");
@@ -1748,29 +1746,30 @@ int dtp_receive(struct dtp * instance,
                 return -1;
         }
 
+        spin_lock_irqsave(&instance->seqq->lock, flags);
         LWE = dt_sv_rcv_lft_win(dt);
         LOG_DBG("DTP receive LWE: %u", LWE);
         while (pdu && (seq_num == LWE + 1)) {
                 dt_sv_rcv_lft_win_set(dt, seq_num);
+                LWE = seq_num;
 
                 rqueue_tail_push_ni(to_post, pdu);
 
                 pdu = seq_queue_pop(instance->seqq->queue);
-                LWE = seq_num;
                 if (!pdu)
                         break;
-                seq_num = pci_sequence_number_get(pdu_pci_get_rw(pdu));
-        }
-        if (pdu)
-                seq_queue_push_ni(instance->seqq->queue, pdu);
-        spin_unlock_irqrestore(&instance->seqq->lock, flags);
 
-        if (!pdu && a)
-                rtimer_stop(instance->timers.a);
-        else if (pdu && a) {
+                pci = pdu_pci_get_rw(pdu);
+                seq_num = pci_sequence_number_get(pci);
+        }
+        if (pdu) {
+                seq_queue_push_ni(instance->seqq->queue, pdu);
                 LOG_DBG("Going to restart A timer with t = %d", a/AF);
                 rtimer_restart(instance->timers.a, a/AF);
+        } else {
+                rtimer_stop(instance->timers.a);
         }
+        spin_unlock_irqrestore(&instance->seqq->lock, flags);
 
         if (dtcp) {
                 if (dtcp_sv_update(dtcp, pci)) {
