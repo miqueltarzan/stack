@@ -161,6 +161,10 @@ M: Leonardo Bergesio <leonardo.bergesio (at) i2cat.net>
 F: plugins/dummy/*
 F: plugins/red/*
 
+Plugins build system
+M: Vincenzo Maffione <v.maffione (at) nextworks.it>
+F: plugins/Makefile
+
 Jain's Congestion Avoidance plugin:
 M: Leonardo Bergesio <leonardo.bergesio (at) i2cat.net>
 F: plugins/cong_avoidance/*
@@ -172,6 +176,14 @@ F: plugins/red/
 Loop-Free Alternate plugin:
 M: Sander Vrijders <sander.vrijders (at) intec.ugent.be>
 F: plugins/lfa/
+
+Multipath-forwarding plugin (ECMP-like):
+M: Javier Garcia <javier.garcial (at) atos.net>
+F: plugins/multipath/
+
+Simple Cherish-Urgency scheduling plugin:
+M: Miquel Tarzan <miquel.tarzan (at) i2cat.net>
+F: plugins/cherish-urgency/
 
 User space: librina
 -------------------
