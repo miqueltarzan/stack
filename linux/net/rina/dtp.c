@@ -39,7 +39,8 @@
 #include "ps-factory.h"
 #include "dtp-ps.h"
 #include "policies.h"
-#include "serdes.h"
+#include "pci.h"
+#include "rds/robjects.h"
 
 static struct policy_set_list policy_sets = {
         .head = LIST_HEAD_INIT(policy_sets.head)
@@ -535,8 +536,7 @@ static int seq_queue_push_ni(struct seq_queue * q, struct pdu * pdu)
         pci  = pdu_pci_get_ro(last->pdu);
         psn  = pci_sequence_number_get((struct pci *) pci);
         if (csn == psn) {
-                LOG_ERR("Another PDU with the same seq_num is in "
-                        "the seqq");
+                LOG_ERR("Another PDU with the same seq_num is in the seqq");
                 seq_queue_entry_destroy(tmp);
                 return -1;
         }
@@ -552,8 +552,7 @@ static int seq_queue_push_ni(struct seq_queue * q, struct pdu * pdu)
                 pci = pdu_pci_get_ro(cur->pdu);
                 psn = pci_sequence_number_get((struct pci *) pci);
                 if (csn == psn) {
-                        LOG_ERR("Another PDU with the same seq_num is in "
-                                "the rtx queue!");
+                        LOG_ERR("Another PDU with the same seq_num is in the rtx queue!");
                         seq_queue_entry_destroy(tmp);
                         return 0;
                 }
@@ -601,24 +600,20 @@ static struct squeue * squeue_create(struct dtp * dtp)
         return tmp;
 }
 
-static int pdu_post(struct dtp * instance,
+static inline int pdu_post(struct dtp * instance,
                     struct pdu * pdu)
 {
         struct sdu *    sdu;
-        struct buffer * buffer;
         struct efcp *   efcp;
 
         ASSERT(instance->sv);
 
-        buffer = pdu_buffer_get_rw(pdu);
-        sdu    = sdu_create_buffer_with_ni(buffer);
-        if (!sdu) {
-                pdu_destroy(pdu);
-                return -1;
-        }
-
-        pdu_buffer_disown(pdu);
-        pdu_destroy(pdu);
+        sdu = sdu_from_pdu(pdu);
+	if (unlikely(!is_sdu_ok(sdu))) {
+		sdu_destroy(sdu);
+		LOG_ERR("Could not convert PDU into SDU");
+		return -1;
+	}
 
         efcp = dt_efcp(instance->parent);
         ASSERT(efcp);
@@ -782,8 +777,8 @@ struct pci * process_A_expiration(struct dtp * dtp, struct dtcp * dtcp)
                         seq_queue_entry_destroy(pos);
 
                         if (rqueue_tail_push_ni(to_post, pdu)) {
-                                LOG_ERR("Could not post PDU %u while A timer"
-                                        "(in-order)", seq_num);
+                                LOG_ERR("Could not post PDU %u while A timer (in-order)",
+					seq_num);
                         }
 
                         LOG_DBG("Atimer: PDU %u posted", seq_num);
@@ -804,8 +799,7 @@ struct pci * process_A_expiration(struct dtp * dtp, struct dtcp * dtcp)
                         }
 
                         if (dt_sv_rcv_lft_win_set(dt, seq_num)) {
-                                LOG_ERR("Failed to set new "
-                                        "left window edge");
+                                LOG_ERR("Failed to set new left window edge");
                                 list_del(&pos->next);
                                 seq_queue_entry_destroy(pos);
                                 goto finish;
@@ -815,8 +809,8 @@ struct pci * process_A_expiration(struct dtp * dtp, struct dtcp * dtcp)
                         seq_queue_entry_destroy(pos);
 
                         if (rqueue_tail_push_ni(to_post, pdu)) {
-                                LOG_ERR("Could not post PDU %u while A timer"
-                                        "(expiration)", seq_num);
+                                LOG_ERR("Could not post PDU %u while A timer (expiration)",
+					seq_num);
                         }
 
                         LWE = seq_num;
@@ -1352,13 +1346,9 @@ int dtp_write(struct dtp * instance,
         int			sbytes;
         uint_t                  sc;
 
-        if (!sdu_is_ok(sdu))
-		return -1;
-
-        if (!instance || !instance->rmt) {
-                LOG_ERR("Bogus instance passed, bailing out");
-		goto sdu_err_exit;
-        }
+        ASSERT(is_sdu_ok(sdu));
+        ASSERT(instance);
+	ASSERT(instance->rmt);
 
         dt = instance->parent;
         if (!dt) {
@@ -1380,6 +1370,10 @@ int dtp_write(struct dtp * instance,
         }
 
         dtcp = dt_dtcp(dt);
+        if (!dtcp) {
+                LOG_ERR("Bogus DTCP passed, bailing out");
+		goto sdu_err_exit;
+        }
 
 #if DTP_INACTIVITY_TIMERS_ENABLE
         /* Stop SenderInactivityTimer */
@@ -1387,11 +1381,6 @@ int dtp_write(struct dtp * instance,
                 LOG_ERR("Failed to stop timer");
         }
 #endif
-        pci = pci_create_ni();
-        if (!pci) {
-		goto sdu_err_exit;
-        }
-
         /* Step 1: Delimiting (fragmentation/reassembly) + Protection */
 
         /*
@@ -1411,6 +1400,16 @@ int dtp_write(struct dtp * instance,
          */
         /* Probably needs to be revised */
 
+	sbytes = sdu_len(sdu);
+
+
+	pdu = pdu_encap_sdu(PDU_TYPE_DT, sdu);
+	if (!pdu_is_ok(pdu)) {
+		LOG_ERR("Could not cast SDU as PDU");
+		goto sdu_err_exit;
+	}
+
+	pci = pdu_pci_get_rw(pdu);
         csn = nxt_seq_get(sv);
         if (pci_format(pci,
                        efcp_src_cep_id(efcp),
@@ -1419,8 +1418,15 @@ int dtp_write(struct dtp * instance,
                        efcp_dst_addr(efcp),
                        csn,
                        efcp_qos_id(efcp),
-                       PDU_TYPE_DT))
-		goto pci_err_exit;
+                       PDU_TYPE_DT)) {
+		LOG_ERR("Could not format PCI");
+		goto pdu_err_exit;
+	}
+	if (!pci_is_ok(pci)) {
+		LOG_ERR("PCI is not ok");
+		goto pdu_err_exit;
+	}
+
 
         sn = dtcp_snd_lf_win(dtcp);
         if (dt_sv_drf_flag(dt)          ||
@@ -1432,25 +1438,8 @@ int dtp_write(struct dtp * instance,
                 pci_flags_set(pci, pci_flags);
 	}
 
-        pdu = pdu_create_ni();
-        if (!pdu)
-		goto pci_err_exit;
-
-        if (pdu_buffer_set(pdu, sdu_buffer_rw(sdu)))
-		goto pci_err_exit;
-
-        if (pdu_pci_set(pdu, pci)) {
-                sdu_buffer_disown(sdu);
-                pdu_destroy(pdu);
-		goto pci_err_exit;
-        }
-
-        sdu_buffer_disown(sdu);
-        sdu_destroy(sdu);
-
         LOG_DBG("DTP Sending PDU %u (CPU: %d)", csn, smp_processor_id());
 
-	sbytes = buffer_length(pdu_buffer_get_ro(pdu));
         if (dtcp) {
                 rcu_read_lock();
                 ps = container_of(rcu_dereference(instance->base.ps),
@@ -1463,8 +1452,7 @@ int dtp_write(struct dtp * instance,
 						csn,
 						ps)) {
 				if (ps->closed_window(ps, pdu)) {
-					LOG_ERR("Problems with the "
-						"closed window policy");
+					LOG_ERR("Problems with the closed window policy");
 					goto stats_err_exit;
 				}
 				rcu_read_unlock();
@@ -1487,26 +1475,23 @@ int dtp_write(struct dtp * instance,
                         rtxq = dt_rtxq(dt);
                         if (!rtxq) {
                                 LOG_ERR("Failed to get rtxq");
-				goto pdu_err_exit;
+				goto pdu_stats_err_exit;
                         }
 
                         cpdu = pdu_dup_ni(pdu);
                         if (!cpdu) {
                                 LOG_ERR("Failed to copy PDU");
-                                LOG_ERR("PDU ok? %d", pdu_pci_present(pdu));
-                                LOG_ERR("PDU type: %d",
-                                        pci_type(pdu_pci_get_ro(pdu)));
-				goto pdu_err_exit;
+                                LOG_ERR("PDU type: %d", pci_type(pci));
+				goto pdu_stats_err_exit;
                         }
 
                         if (rtxq_push_ni(rtxq, cpdu)) {
                                 LOG_ERR("Couldn't push to rtxq");
-				goto pdu_err_exit;
+				goto pdu_stats_err_exit;
                         }
                 }
                 if (ps->transmission_control(ps, pdu)) {
-                        LOG_ERR("Problems with transmission "
-                                "control");
+                        LOG_ERR("Problems with transmission control");
 			goto stats_err_exit;
                 }
 
@@ -1533,13 +1518,15 @@ int dtp_write(struct dtp * instance,
 	stats_inc_bytes(tx, sv, sbytes, flags);
 	return 0;
 
-pci_err_exit:
-	pci_destroy(pci);
 sdu_err_exit:
 	sdu_destroy(sdu);
 	return -1;
 
 pdu_err_exit:
+	pdu_destroy(pdu);
+	return -1;
+
+pdu_stats_err_exit:
 	pdu_destroy(pdu);
 stats_err_exit:
         rcu_read_unlock();
@@ -1663,11 +1650,6 @@ int dtp_receive(struct dtp * instance,
 	efcp = dt_efcp(dt);
 	ASSERT(efcp);
 
-        if (!pdu_pci_present(pdu)) {
-                LOG_DBG("Couldn't find PCI in PDU");
-                pdu_destroy(pdu);
-                return -1;
-        }
         pci = pdu_pci_get_rw(pdu);
 
         a           = dt_sv_a(dt);
@@ -1684,7 +1666,7 @@ int dtp_receive(struct dtp * instance,
         rcu_read_unlock();
 
         seq_num = pci_sequence_number_get(pci);
-	sbytes = buffer_length(pdu_buffer_get_ro(pdu));
+	sbytes = pdu_data_len(pdu);
 
         LOG_DBG("local_soft_irq_pending: %d", local_softirq_pending());
         LOG_DBG("DTP Received PDU %u (CPU: %d)",
@@ -1749,21 +1731,12 @@ int dtp_receive(struct dtp * instance,
                 /* Send an ACK/Flow Control PDU with current window values */
                 if (dtcp) {
                         if (dtcp_ack_flow_control_pdu_send(dtcp, LWE)) {
-                                LOG_ERR("Failed to send ack / flow "
-                                        "control pdu");
+                                LOG_ERR("Failed to send ack/flow control pdu");
                                 return -1;
                         }
                 }
                 return 0;
         }
-
-        /*NOTE: Just for debugging
-        if (dtcp && seq_num > dtcp_rcv_rt_win(dtcp)) {
-                LOG_INFO("PDU Scep-id %u Dcep-id %u SeqN %u, RWE: %u",
-                         pci_cep_source(pci), pci_cep_destination(pci),
-                         seq_num, dtcp_rcv_rt_win(dtcp));
-        }
-        */
 
 #if DTP_INACTIVITY_TIMERS_ENABLE
         /* Start ReceiverInactivityTimer */
@@ -1822,6 +1795,7 @@ int dtp_receive(struct dtp * instance,
         }
 
         spin_lock_irqsave(&instance->seqq->lock, flags);
+	/* FIXME we must avoid allocating memory here */
         to_post = rqueue_create_ni();
         if (!to_post) {
                 LOG_ERR("Could not create to_post queue");
@@ -1856,16 +1830,15 @@ int dtp_receive(struct dtp * instance,
                 rtimer_start(instance->timers.a, a/AF);
 
         if (dtcp) {
-                if (dtcp_sv_update(dtcp, pci)) {
+                if (dtcp_sv_update(dtcp, pci))
                         LOG_ERR("Failed to update dtcp sv");
-                }
         }
         while (!rqueue_is_empty(to_post)) {
                 pdu = (struct pdu *) rqueue_head_pop(to_post);
                 if (pdu) {
                 	sbytes = buffer_length(pdu_buffer_get_ro(pdu));
                         pdu_post(instance, pdu);
-			stats_inc_bytes(rx, sv, sbytes, flags);
+                        stats_inc_bytes(rx, sv, sbytes, flags);
                 }
         }
         rqueue_destroy(to_post, (void (*)(void *)) pdu_destroy);
