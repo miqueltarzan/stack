@@ -196,27 +196,25 @@ inline int dtcp_pdu_send(struct dtcp * dtcp, struct pdu * pdu)
 EXPORT_SYMBOL(dtcp_pdu_send);
 
 #define dtcp_getter(type, attr)				\
-	unsigned long flags;				\
 	type ret;					\
 							\
 	ASSERT(dtcp);					\
 	ASSERT(dtcp->sv);				\
 							\
-	spin_lock_irqsave(&dtcp->sv->lock, flags);	\
+	spin_lock_bh(&dtcp->sv->lock);			\
 	ret = dtcp->sv->attr;				\
-	spin_unlock_irqrestore(&dtcp->sv->lock, flags);	\
+	spin_unlock_bh(&dtcp->sv->lock);		\
 							\
 	return ret
 
 #define dtcp_setter(attr, val)				\
-	unsigned long flags;				\
 							\
 	ASSERT(dtcp);					\
 	ASSERT(dtcp->sv);				\
 							\
-	spin_lock_irqsave(&dtcp->sv->lock, flags);	\
+	spin_lock_bh(&dtcp->sv->lock);			\
 	dtcp->sv->attr = val;				\
-	spin_unlock_irqrestore(&dtcp->sv->lock, flags);	\
+	spin_unlock_bh(&dtcp->sv->lock);		\
 							\
 	return 0
 
@@ -237,16 +235,14 @@ EXPORT_SYMBOL(dtcp_time_frame_set);
 
 inline int dtcp_last_time(struct dtcp * dtcp, struct timespec * s)
 {
-	unsigned long flags;
-
 	ASSERT(dtcp);
 	ASSERT(dtcp->sv);
 	ASSERT(s);
 
-	spin_lock_irqsave(&dtcp->sv->lock, flags);
+	spin_lock_bh(&dtcp->sv->lock);
 	s->tv_sec = dtcp->sv->last_time.tv_sec;
 	s->tv_nsec = dtcp->sv->last_time.tv_nsec;
-	spin_unlock_irqrestore(&dtcp->sv->lock, flags);
+	spin_unlock_bh(&dtcp->sv->lock);
 
 	return 0;
 }
@@ -254,16 +250,14 @@ EXPORT_SYMBOL(dtcp_last_time);
 
 inline int dtcp_last_time_set(struct dtcp * dtcp, struct timespec * s)
 {
-	unsigned long flags;
-
 	ASSERT(dtcp);
 	ASSERT(dtcp->sv);
 	ASSERT(s);
 
-	spin_lock_irqsave(&dtcp->sv->lock, flags);
+	spin_lock_bh(&dtcp->sv->lock);
 	dtcp->sv->last_time.tv_sec = s->tv_sec;
 	dtcp->sv->last_time.tv_nsec = s->tv_nsec;
-	spin_unlock_irqrestore(&dtcp->sv->lock, flags);
+	spin_unlock_bh(&dtcp->sv->lock);
 
 	return 0;
 }
@@ -295,14 +289,12 @@ EXPORT_SYMBOL(dtcp_recv_itu_set);
 
 inline int dtcp_recv_itu_inc(struct dtcp * dtcp, uint_t recv)
 {
-	unsigned long flags;
-
 	ASSERT(dtcp);
 	ASSERT(dtcp->sv);
 
-	spin_lock_irqsave(&dtcp->sv->lock, flags);
+	spin_lock_bh(&dtcp->sv->lock);
 	dtcp->sv->pdus_rcvd_in_time_unit += recv;
-	spin_unlock_irqrestore(&dtcp->sv->lock, flags);
+	spin_unlock_bh(&dtcp->sv->lock);
 
 	return 0;
 }
@@ -318,14 +310,12 @@ EXPORT_SYMBOL(dtcp_sent_itu_set);
 
 inline int dtcp_sent_itu_inc(struct dtcp * dtcp, uint_t sent)
 {
-	unsigned long flags;
-
 	ASSERT(dtcp);
 	ASSERT(dtcp->sv);
 
-	spin_lock_irqsave(&dtcp->sv->lock, flags);
+	spin_lock_bh(&dtcp->sv->lock);
 	dtcp->sv->pdus_sent_in_time_unit += sent;
-	spin_unlock_irqrestore(&dtcp->sv->lock, flags);
+	spin_unlock_bh(&dtcp->sv->lock);
 
 	return 0;
 }
@@ -333,18 +323,16 @@ EXPORT_SYMBOL(dtcp_sent_itu_inc);
 
 int dtcp_rate_fc_reset(struct dtcp * dtcp, struct timespec * now)
 {
-	unsigned long flags;
-
 	ASSERT(dtcp);
 	ASSERT(dtcp->sv);
 	ASSERT(now);
 
-	spin_lock_irqsave(&dtcp->sv->lock, flags);
+	spin_lock_bh(&dtcp->sv->lock);
 	dtcp->sv->pdus_sent_in_time_unit = 0;
 	dtcp->sv->pdus_rcvd_in_time_unit = 0;
 	dtcp->sv->last_time.tv_sec = now->tv_sec;
 	dtcp->sv->last_time.tv_nsec = now->tv_nsec;
-	spin_unlock_irqrestore(&dtcp->sv->lock, flags);
+	spin_unlock_bh(&dtcp->sv->lock);
 
 	return 0;
 }
@@ -384,26 +372,22 @@ EXPORT_SYMBOL(last_rcv_ctrl_seq);
 
 inline static void flow_ctrl_inc(struct dtcp * dtcp)
 {
-        unsigned long flags;
-
         ASSERT(dtcp);
         ASSERT(dtcp->sv);
 
-        spin_lock_irqsave(&dtcp->sv->lock, flags);
+        spin_lock_bh(&dtcp->sv->lock);
         dtcp->sv->flow_ctl++;
-        spin_unlock_irqrestore(&dtcp->sv->lock, flags);
+        spin_unlock_bh(&dtcp->sv->lock);
 }
 
 inline static void acks_inc(struct dtcp * dtcp)
 {
-        unsigned long flags;
-
         ASSERT(dtcp);
         ASSERT(dtcp->sv);
 
-        spin_lock_irqsave(&dtcp->sv->lock, flags);
+        spin_lock_bh(&dtcp->sv->lock);
         dtcp->sv->acks++;
-        spin_unlock_irqrestore(&dtcp->sv->lock, flags);
+        spin_unlock_bh(&dtcp->sv->lock);
 }
 
 inline seq_num_t snd_rt_wind_edge(struct dtcp * dtcp)
@@ -432,15 +416,13 @@ EXPORT_SYMBOL(pdus_sent_in_t_unit_set);
 inline static seq_num_t next_snd_ctl_seq(struct dtcp * dtcp)
 {
         seq_num_t     tmp;
-        unsigned long flags;
-
 
         ASSERT(dtcp);
         ASSERT(dtcp->sv);
 
-        spin_lock_irqsave(&dtcp->sv->lock, flags);
+        spin_lock_bh(&dtcp->sv->lock);
         tmp = ++dtcp->sv->next_snd_ctl_seq;
-        spin_unlock_irqrestore(&dtcp->sv->lock, flags);
+        spin_unlock_bh(&dtcp->sv->lock);
 
         return tmp;
 }
@@ -453,14 +435,12 @@ inline static seq_num_t last_rcv_data_ack(struct dtcp * dtcp)
 
 inline static void last_snd_data_ack_set(struct dtcp * dtcp, seq_num_t seq_num)
 {
-	unsigned long flags;
-
 	ASSERT(dtcp);
 	ASSERT(dtcp->sv);
 
-	spin_lock_irqsave(&dtcp->sv->lock, flags);
+	spin_lock_bh(&dtcp->sv->lock);
 	dtcp->sv->last_snd_data_ack = seq_num;
-	spin_unlock_irqrestore(&dtcp->sv->lock, flags);
+	spin_unlock_bh(&dtcp->sv->lock);
 }
 
 inline static uint_t dtcp_sndr_credit(struct dtcp * dtcp)
@@ -472,46 +452,41 @@ EXPORT_SYMBOL(dtcp_rcvr_credit);
 
 inline void dtcp_rcvr_credit_set(struct dtcp * dtcp, uint_t credit)
 {
-        unsigned long flags;
-
         ASSERT(dtcp);
         ASSERT(dtcp->sv);
 
-        spin_lock_irqsave(&dtcp->sv->lock, flags);
+        spin_lock_bh(&dtcp->sv->lock);
         dtcp->sv->rcvr_credit = credit;
-        spin_unlock_irqrestore(&dtcp->sv->lock, flags);
+        spin_unlock_bh(&dtcp->sv->lock);
 }
 EXPORT_SYMBOL(dtcp_rcvr_credit_set);
 
 inline void update_rt_wind_edge(struct dtcp * dtcp)
 {
         seq_num_t     seq;
-        unsigned long flags;
 
         ASSERT(dtcp);
         ASSERT(dtcp->sv);
 
         seq = dt_sv_rcv_lft_win(dtcp->parent);
-        spin_lock_irqsave(&dtcp->sv->lock, flags);
+        spin_lock_bh(&dtcp->sv->lock);
         seq += dtcp->sv->rcvr_credit;
         dtcp->sv->rcvr_rt_wind_edge = seq;
-        spin_unlock_irqrestore(&dtcp->sv->lock, flags);
+        spin_unlock_bh(&dtcp->sv->lock);
 }
 EXPORT_SYMBOL(update_rt_wind_edge);
 
 inline void update_credit_and_rt_wind_edge(struct dtcp * dtcp, uint_t credit)
 {
-        unsigned long flags;
-
         ASSERT(dtcp);
         ASSERT(dtcp->sv);
 
-        spin_lock_irqsave(&dtcp->sv->lock, flags);
+        spin_lock_bh(&dtcp->sv->lock);
         dtcp->sv->rcvr_credit = credit;
 	/* applying the TCP rule of not shrinking the window */
 	if (dt_sv_rcv_lft_win(dtcp->parent) + credit > dtcp->sv->rcvr_rt_wind_edge)
         	dtcp->sv->rcvr_rt_wind_edge = dt_sv_rcv_lft_win(dtcp->parent) + credit;
-        spin_unlock_irqrestore(&dtcp->sv->lock, flags);
+        spin_unlock_bh(&dtcp->sv->lock);
 }
 EXPORT_SYMBOL(update_credit_and_rt_wind_edge);
 
