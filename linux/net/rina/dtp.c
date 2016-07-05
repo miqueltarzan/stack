@@ -813,7 +813,8 @@ struct pci * process_A_expiration(struct dtp * dtp, struct dtcp * dtcp)
 
         }
 finish:
-        pci_ret = pci_dup_ni(pci_ret);
+        if (pci_get(pci_ret))
+		LOG_ERR("Could not get a reference to PCI");
         spin_unlock_bh(&seqq->lock);
 
         while (!rqueue_is_empty(to_post)) {
@@ -869,7 +870,7 @@ static void tf_a(void * o)
                 }
         } else {
                 pci = process_A_expiration(dtp, dtcp);
-                if (pci) pci_destroy(pci);
+                if (pci) pci_release(pci);
 #if DTP_INACTIVITY_TIMERS_ENABLE
                 if (rtimer_restart(dtp->timers.sender_inactivity,
                                    3 * (dt_sv_mpl(dt) +
@@ -1822,7 +1823,7 @@ int dtp_receive(struct dtp * instance,
         while (!rqueue_is_empty(to_post)) {
                 pdu = (struct pdu *) rqueue_head_pop(to_post);
                 if (pdu) {
-                	sbytes = buffer_length(pdu_buffer_get_ro(pdu));
+                	sbytes = pdu_data_len(pdu);
                         pdu_post(instance, pdu);
 			stats_inc_bytes(rx, sv, sbytes);
 		}
