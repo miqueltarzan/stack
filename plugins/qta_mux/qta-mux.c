@@ -897,7 +897,7 @@ static struct ps_base *
 rmt_ps_qta_create(struct rina_component * component)
 {
         struct rmt * rmt = rmt_from_component(component);
-        struct rmt_ps * ps = rkzalloc(sizeof(*ps), GFP_KERNEL);
+        struct rmt_ps * ps = rkzalloc(sizeof(*ps), GFP_ATOMIC);
         struct qta_mux_data * data;
         struct rmt_config * rmt_cfg;
 
