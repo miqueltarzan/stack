@@ -49,7 +49,7 @@ struct q_qos {
         uint_t           handled;
         uint_t           key;
         uint_t           skip_prob;
-        struct robject * robj;
+        struct robject   robj;
 };
 
 struct config_q_qos {
@@ -66,111 +66,6 @@ struct cher_urg_config {
         struct list_head list_queues;
 };
 
-static struct q_qos * q_qos_create(qos_id_t id,
-                                   uint_t abs_th,
-                                   uint_t th,
-                                   uint_t drop_prob)
-{
-        struct q_qos * tmp;
-
-        tmp = rkzalloc(sizeof(*tmp), GFP_ATOMIC);
-        if (!tmp) {
-                LOG_ERR("Couldn't create queue for QoS id %u", id);
-
-                return NULL;
-        }
-
-        tmp->qos_id    = id;
-        tmp->abs_th    = abs_th;
-        tmp->th        = th;
-        tmp->drop_prob = drop_prob;
-        tmp->dropped   = 0;
-        tmp->handled   = 0;
-        tmp->queue     = rfifo_create();
-        if (!tmp->queue) {
-                LOG_ERR("Couldn't create queue, ");
-                rkfree(tmp);
-                return NULL;
-        }
-        INIT_LIST_HEAD(&tmp->list);
-
-        return tmp;
-}
-
-static void q_qos_destroy(struct q_qos * q)
-{
-        if (!q)
-                return;
-
-        list_del(&q->list);
-        rfifo_destroy(q->queue, (void (*)(void *)) pdu_destroy);
-        rkfree(q);
-}
-
-static struct config_q_qos * config_q_qos_create(qos_id_t id)
-{
-        struct config_q_qos * tmp = rkzalloc(sizeof(*tmp), GFP_ATOMIC);
-
-        if (!tmp) {
-                LOG_ERR("Could not create config queue %u", id);
-                return NULL;
-        }
-
-        tmp->qos_id    = id;
-        INIT_LIST_HEAD(&tmp->list);
-
-        return tmp;
-}
-
-static void config_q_qos_destroy(struct config_q_qos * q)
-{
-        if (!q)
-                return;
-
-        rkfree(q);
-}
-
-static struct config_q_qos * config_q_qos_find(struct cher_urg_config * config,
-                                               qos_id_t                 qos_id)
-{
-        struct config_q_qos * pos;
-
-        list_for_each_entry(pos, &config->list_queues, list) {
-                if (pos->qos_id == qos_id)
-                        return pos;
-        }
-
-        return NULL;
-}
-
-static struct cher_urg_config * cherish_urgency_config_create(void)
-{
-        struct cher_urg_config * tmp;
-
-        tmp = rkzalloc(sizeof(*tmp), GFP_ATOMIC);
-        if (!tmp) {
-                LOG_ERR("Could not create config queue");
-                return NULL;
-        }
-        INIT_LIST_HEAD(&tmp->list_queues);
-
-        return tmp;
-}
-
-static void cherish_urgency_config_destroy(struct cher_urg_config * config)
-{
-        struct config_q_qos *pos, *next;
-
-        if (!config)
-                return;
-
-        list_for_each_entry_safe(pos, next, &config->list_queues, list) {
-                config_q_qos_destroy(pos);
-        }
-
-        return;
-}
-
 struct cu_queue {
         uint_t           skip_prob;
         struct list_head list;        /* link to list of urgency queues */
@@ -183,7 +78,7 @@ struct cu_queue_set {
         port_id_t        port_id;
         struct list_head list;
         ssize_t          occupation;
-        struct robject * robj;
+        struct robject   robj;
 };
 
 static ssize_t cher_urg_qset_attr_show(struct robject * robj,
@@ -257,6 +152,121 @@ RINA_ATTRS(qos_queue, queued_pdus, drop_pdus, total_pdus, urgency,
                drop_probability, qos_id);
 RINA_KTYPE(qos_queue);
 
+static void q_qos_destroy(struct q_qos * q)
+{
+        if (!q)
+                return;
+
+        list_del(&q->list);
+        rfifo_destroy(q->queue, (void (*)(void *)) pdu_destroy);
+        robject_del(&q->robj);
+        rkfree(q);
+}
+
+static struct q_qos * q_qos_create(qos_id_t id,
+                                   uint_t abs_th,
+                                   uint_t th,
+                                   uint_t drop_prob,
+                                   uint_t key,
+                                   uint_t skip_prob,
+                                   struct robject * parent)
+{
+        struct q_qos * tmp;
+
+        tmp = rkzalloc(sizeof(*tmp), GFP_ATOMIC);
+        if (!tmp) {
+                LOG_ERR("Couldn't create queue for QoS id %u", id);
+
+                return NULL;
+        }
+
+        tmp->qos_id    = id;
+        tmp->abs_th    = abs_th;
+        tmp->th        = th;
+        tmp->drop_prob = drop_prob;
+        tmp->dropped   = 0;
+        tmp->handled   = 0;
+        tmp->queue     = rfifo_create();
+        if (!tmp->queue) {
+                LOG_ERR("Couldn't create queue, ");
+                rkfree(tmp);
+                return NULL;
+        }
+        INIT_LIST_HEAD(&tmp->list);
+
+        if (robject_init_and_add(&tmp->robj, &qos_queue_rtype, parent, "queue-%d", id)) {
+                LOG_ERR("Failed to create Cherish-Urgency QoS Queue sysfs entry");
+                q_qos_destroy(tmp);
+                return NULL;
+        }
+
+        return tmp;
+}
+
+static struct config_q_qos * config_q_qos_create(qos_id_t id)
+{
+        struct config_q_qos * tmp = rkzalloc(sizeof(*tmp), GFP_ATOMIC);
+
+        if (!tmp) {
+                LOG_ERR("Could not create config queue %u", id);
+                return NULL;
+        }
+
+        tmp->qos_id    = id;
+        INIT_LIST_HEAD(&tmp->list);
+
+        return tmp;
+}
+
+static void config_q_qos_destroy(struct config_q_qos * q)
+{
+        if (!q)
+                return;
+
+        rkfree(q);
+}
+
+static struct config_q_qos * config_q_qos_find(struct cher_urg_config * config,
+                                               qos_id_t                 qos_id)
+{
+        struct config_q_qos * pos;
+
+        list_for_each_entry(pos, &config->list_queues, list) {
+                if (pos->qos_id == qos_id)
+                        return pos;
+        }
+
+        return NULL;
+}
+
+static struct cher_urg_config * cherish_urgency_config_create(void)
+{
+        struct cher_urg_config * tmp;
+
+        tmp = rkzalloc(sizeof(*tmp), GFP_ATOMIC);
+        if (!tmp) {
+                LOG_ERR("Could not create config queue");
+                return NULL;
+        }
+        INIT_LIST_HEAD(&tmp->list_queues);
+
+        return tmp;
+}
+
+static void cherish_urgency_config_destroy(struct cher_urg_config * config)
+{
+        struct config_q_qos *pos, *next;
+
+        if (!config)
+                return;
+
+        list_for_each_entry_safe(pos, next, &config->list_queues, list) {
+                config_q_qos_destroy(pos);
+        }
+
+        return;
+}
+
 static struct cu_queue * queue_create(uint_t key)
 {
         struct cu_queue * tmp;
@@ -290,20 +300,6 @@ static int queue_destroy(struct cu_queue * cu_q)
         return 0;
 }
 
-static struct cu_queue_set * cu_queue_set_create(port_id_t port_id)
-{
-        struct cu_queue_set * tmp = rkzalloc(sizeof(*tmp), GFP_ATOMIC);
-
-        if (!tmp)
-                return NULL;
-
-        tmp->port_id = port_id;
-        INIT_LIST_HEAD(&tmp->queues);
-        INIT_LIST_HEAD(&tmp->list);
-
-        return tmp;
-}
-
 static int cu_queue_set_destroy(struct cu_queue_set * qset)
 {
         struct cu_queue *pos, *next;
@@ -318,6 +314,28 @@ static int cu_queue_set_destroy(struct cu_queue_set * qset)
         rkfree(qset);
 
         return 0;
+}
+
+static struct cu_queue_set * cu_queue_set_create(port_id_t port_id,
+						 struct robject * parent)
+{
+        struct cu_queue_set * tmp = rkzalloc(sizeof(*tmp), GFP_ATOMIC);
+
+        if (!tmp)
+                return NULL;
+
+        tmp->port_id = port_id;
+        INIT_LIST_HEAD(&tmp->queues);
+        INIT_LIST_HEAD(&tmp->list);
+        tmp->occupation = 0;
+
+        if (robject_init_and_add(&tmp->robj, &cher_urg_qset_rtype, parent, "qset")) {
+                LOG_ERR("Failed to create Cherish-Urgency Queue Set sysfs entry");
+                cu_queue_set_destroy(tmp);
+                return NULL;
+        }
+
+        return tmp;
 }
 
 struct cherish_urgency_data {
@@ -413,7 +431,7 @@ struct cu_queue_set * queue_set_find(struct cherish_urgency_data * q,
         return NULL;
 }
 
-struct pdu * cu_rmt_dequeue_policy(struct rmt_ps	  *ps,
+struct pdu * cu_rmt_dequeue_policy(struct rmt_ps      *ps,
 				   struct rmt_n1_port *n1_port)
 {
         struct cu_queue     *entry;
@@ -443,6 +461,7 @@ struct pdu * cu_rmt_dequeue_policy(struct rmt_ps	  *ps,
                                 tmp = qqos;
                                 if (entry->skip_prob > i) {
                                         ret_pdu = rfifo_pop(qqos->queue);
+                                        qset->occupation--;
                                         return ret_pdu;
                                 }
                         }
@@ -450,6 +469,7 @@ struct pdu * cu_rmt_dequeue_policy(struct rmt_ps	  *ps,
         }
         if (tmp) {
                 ret_pdu = rfifo_pop(tmp->queue);
+                qset->occupation--;
                 return ret_pdu;
         }
 
@@ -559,7 +579,7 @@ void * cu_rmt_q_create_policy(struct rmt_ps      *ps,
 
         /* Create the n1_port queue group */
         /* Add it to the n1_port */
-        tmp = cu_queue_set_create(n1_port->port_id);
+        tmp = cu_queue_set_create(n1_port->port_id, &n1_port->robj);
         if (!tmp) {
                 LOG_ERR("No scheduling policy created for port-id %d",
                         n1_port->port_id);
@@ -583,7 +603,10 @@ void * cu_rmt_q_create_policy(struct rmt_ps      *ps,
                 q_qos = q_qos_create(pos->qos_id,
                                      pos->abs_th,
                                      pos->th,
-                                     pos->drop_prob);
+                                     pos->drop_prob,
+                                     pos->key,
+                                     pos->skip_prob,
+                                     &tmp->robj);
                 if (!q_qos) {
                         cu_queue_set_destroy(tmp);
                         return NULL;
