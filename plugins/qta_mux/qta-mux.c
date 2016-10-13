@@ -184,6 +184,7 @@ static struct qta_queue * qta_queue_create(uint_t key)
 		LOG_ERR("Could not allocate memory for QTA queue");
 		return NULL;
 	}
+	tmp->key = key;
 	INIT_LIST_HEAD(&tmp->list_q_entry);
 	INIT_LIST_HEAD(&tmp->list_q_qos);
 	INIT_LIST_HEAD(&tmp->list);
