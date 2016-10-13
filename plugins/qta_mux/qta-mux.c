@@ -80,7 +80,6 @@ struct pshaper {
 	struct config_pshaper config;
 	uint_t length;
 	uint_t backlog;
-	struct robject robj;
 };
 
 struct q_qos {
@@ -636,12 +635,25 @@ static void qset_add_qta_queue(struct qta_queue *     queue,
                 return;
         }
 
+        /* Debug only */
+        list_for_each_entry(pos, &qset->queues, list) {
+                struct q_qos * qqos;
+
+                LOG_INFO("Urgency class: %u", pos->key);
+                list_for_each_entry(qqos, &pos->list_q_qos, list) {
+                        LOG_INFO("Qos id: %u, Drop prob: %u",
+                                 qqos->qos_id,
+                                 qqos->drop_prob);
+                }
+        }
+
         list_for_each_entry(pos, &qset->queues, list) {
                 if (pos->key > queue->key) {
                         list_add_tail(&queue->list, &pos->list);
-                        break;
+                        return;
                 }
         }
+	list_add(&queue->list, &pos->list);
 }
 
 void * qta_rmt_q_create_policy(struct rmt_ps      *ps,
@@ -765,7 +777,7 @@ static int qta_mux_ps_set_policy_set_param_priv(struct qta_mux_data * data,
                         return -1;
 
                 list_add(&conf_qos->list, &data->config->list_queues);
-                LOG_DBG("Created queue for QoS id %u", qos_id);
+                LOG_INFO("Created queue for QoS id %u", qos_id);
         }
 
         if (strcmp(name + offset, "urgency-class") == 0) {
@@ -933,6 +945,8 @@ rmt_ps_qta_create(struct rina_component * component)
         ps->rmt_enqueue_policy = qta_rmt_enqueue_policy;
         ps->rmt_q_create_policy = qta_rmt_q_create_policy;
         ps->rmt_q_destroy_policy = qta_rmt_q_destroy_policy;
+
+        LOG_INFO("Loaded QTA MUX policy set and its configuration");
 
         return &ps->base;
 }
