@@ -455,7 +455,7 @@ void Client::floodFlow(int port_id)
 
 	unsigned long rt = 0;
 	if (sdus_sent > 0) rt = ((sdus_sent - sdus_received)*100/sdus_sent);
-	cout << "QoS ID: "<< rate << " ;SDUs sent: "<< sdus_sent << "; SDUs received: " << sdus_received
+	cout << "QoS ID: "<< delay << " ;SDUs sent: "<< sdus_sent << "; SDUs received: " << sdus_received
 	     << "; " << rt << "% SDU loss"
 	     << "Minimum RTT: " << min_rtt << " ms; Maximum RTT: " << max_rtt
 			<< " ms; Average RTT:" << average_rtt
