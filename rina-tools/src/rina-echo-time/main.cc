@@ -163,7 +163,7 @@ int wrapped_main(int argc, char** argv)
                                              1000,
                                              "integer");
                 TCLAP::ValueArg<int> qosid_arg("",
-                                             "QoS ID",
+                                             "qos-id",
                                              "It should be a value greater than zero, default = 1",
                                              false,
                                              1,
