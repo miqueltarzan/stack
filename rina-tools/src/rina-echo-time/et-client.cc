@@ -359,9 +359,9 @@ void Client::pingFlow(int port_id)
         variance = m2/((double)sdus_received -1);
         stdev = sqrt(variance);
 
-        cout << "QoS ID: "<< delay << "; SDUs sent: "<< sdus_sent << "; SDUs received: " << sdus_received;
-        cout << "; " << ((sdus_sent - sdus_received)*100/sdus_sent) << "% SDU loss" <<endl;
-        cout << "QoS ID: "<< delay << "; Minimum RTT: " << min_rtt << " ms; Maximum RTT: " << max_rtt
+        cout << "QoS ID: "<< delay << "; SDUs sent: "<< sdus_sent << "; SDUs received: " << sdus_received
+             << "; " << ((sdus_sent - sdus_received)*100/sdus_sent) << "% SDU loss"
+             << "; Minimum RTT: " << min_rtt << " ms; Maximum RTT: " << max_rtt
              << " ms; Average RTT:" << average_rtt
              << " ms; Standard deviation: " << stdev<<" ms"<<endl;
 
