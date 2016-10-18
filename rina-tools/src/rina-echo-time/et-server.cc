@@ -150,6 +150,13 @@ timespec_diff_us(const struct timespec& before, const struct timespec& later)
                         (later.tv_nsec - before.tv_nsec))/1000;
 }
 
+static unsigned long
+tdiff_us(unsigned long ts, unsigned long tn, const struct timespec& later)
+{
+	return ((later.tv_sec - ts) * 1000000000 +
+			(later.tv_nsec - tn))/1000;
+}
+
 void EchoTimeServerWorker::servePerfFlow(int port_id)
 {
         unsigned long int us;
@@ -163,6 +170,9 @@ void EchoTimeServerWorker::servePerfFlow(int port_id)
         int sdu_size;
         struct timespec last_timestamp;
         struct timespec now;
+        int qosid;
+        unsigned long ts;
+        unsigned long tn;
 
         // Setup a timer if dealloc_wait option is set */
         if (dw > 0) {
@@ -179,11 +189,15 @@ void EchoTimeServerWorker::servePerfFlow(int port_id)
                         }
                         pkt_cnt++;
                         bytes_cnt += sdu_size;
+                        memcpy(&qosid, buffer, sizeof(qosid));
+                        memcpy(&ts, buffer+sizeof(qosid), sizeof(ts));
+                        memcpy(&tn, buffer+sizeof(qosid)+sizeof(ts), sizeof(tn));
 
                         // Report periodic stats if needed
                         if (interval != -1 && --interval_cnt == 0) {
                                 clock_gettime(CLOCK_REALTIME, &now);
-                                us = timespec_diff_us(last_timestamp, now);
+                                //us = timespec_diff_us(last_timestamp, now);
+                                us = tdiff_us(ts, tn, now);
                                 printPerfStats(pkt_cnt, bytes_cnt, us);
 
                                 tot_pkt += pkt_cnt;
@@ -224,11 +238,13 @@ void EchoTimeServerWorker::servePerfFlow(int port_id)
                 LOG_INFO("Discarded %lu SDUs", pkt_cnt);
         }
 
-        LOG_INFO("Received %lu SDUs and %lu bytes in %lu us",
-                        tot_pkt, tot_bytes, tot_us);
-        LOG_INFO("Goodput: %.4f Kpps, %.4f Mbps",
+        LOG_INFO("QoS ID: %d : Received %lu SDUs and %lu bytes in %lu us",
+                        qosid, tot_pkt, tot_bytes, tot_us);
+        LOG_INFO("QoS ID: %d : Goodput: %.4f Kpps, %.4f Mbps, %.4f Mbps",
+        		qosid,
                         static_cast<float>((tot_pkt * 1000.0)/tot_us),
-                        static_cast<float>((tot_bytes * 8.0)/tot_us));
+                        static_cast<float>((tot_bytes * 8.0)/tot_us),
+                        static_cast<float>((tot_us/tot_pkt)));
 
         delete [] buffer;
 }

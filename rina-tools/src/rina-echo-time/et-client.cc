@@ -468,6 +468,9 @@ void Client::perfFlow(int port_id)
 {
         char *buffer;
         unsigned long n = 0;
+        unsigned long ts;
+        unsigned long tn;
+        struct timespec now;
 
         buffer = new char[data_size];
         if (!buffer) {
@@ -481,6 +484,13 @@ void Client::perfFlow(int port_id)
         }
 
         while (n < echo_times) {
+        	clock_gettime(CLOCK_REALTIME, &now);
+                memcpy(buffer, &qosid, sizeof(qosid));
+                ts = now.tv_sec;
+                tn = now.tv_nsec;
+                memcpy(buffer+sizeof(qosid), &ts, sizeof(ts));
+                memcpy(buffer+sizeof(qosid)+sizeof(ts), &tn, sizeof(tn));
+
                 ipcManager->writeSDU(port_id, buffer, data_size);
                 n++;
         }

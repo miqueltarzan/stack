@@ -44,11 +44,11 @@ struct q_qos {
         uint_t           drop_prob;
         qos_id_t         qos_id;
         struct list_head list;
-        struct rfifo *   queue;
         uint_t           dropped;
         uint_t           handled;
         uint_t           key;
         uint_t           skip_prob;
+        struct cu_queue * cu_q;
         struct robject   robj;
 };
 
@@ -71,6 +71,7 @@ struct cu_queue {
         struct list_head list;        /* link to list of urgency queues */
         uint_t           key;         /* Urgency */
         struct list_head qos_id_list; /* head of list of qos queues */
+        struct rfifo *   queue;
 };
 
 struct cu_queue_set {
@@ -118,9 +119,6 @@ static ssize_t qos_queue_attr_show(struct robject * robj,
        if (strcmp(robject_attr_name(attr), "skip_probability") == 0) {
                return sprintf(buf, "%u\n", q->skip_prob);
        }
-       if (strcmp(robject_attr_name(attr), "queued_pdus") == 0) {
-               return sprintf(buf, "%u\n", rfifo_length(q->queue));
-       }
        if (strcmp(robject_attr_name(attr), "drop_pdus") == 0) {
                return sprintf(buf, "%u\n", q->dropped);
        }
@@ -158,7 +156,6 @@ static void q_qos_destroy(struct q_qos * q)
                 return;
 
         list_del(&q->list);
-        rfifo_destroy(q->queue, (void (*)(void *)) pdu_destroy);
         robject_del(&q->robj);
         rkfree(q);
 }
@@ -169,6 +166,7 @@ static struct q_qos * q_qos_create(qos_id_t id,
                                    uint_t drop_prob,
                                    uint_t key,
                                    uint_t skip_prob,
+                                   struct cu_queue * cu_q,
                                    struct robject * parent)
 {
         struct q_qos * tmp;
@@ -186,12 +184,7 @@ static struct q_qos * q_qos_create(qos_id_t id,
         tmp->drop_prob = drop_prob;
         tmp->dropped   = 0;
         tmp->handled   = 0;
-        tmp->queue     = rfifo_create();
-        if (!tmp->queue) {
-                LOG_ERR("Couldn't create queue, ");
-                rkfree(tmp);
-                return NULL;
-        }
+        tmp->cu_q      = cu_q;
         INIT_LIST_HEAD(&tmp->list);
 
         if (robject_init_and_add(&tmp->robj, &qos_queue_rtype, parent, "queue-%d", id)) {
@@ -279,6 +272,12 @@ static struct cu_queue * queue_create(uint_t key)
         tmp->key = key;
         INIT_LIST_HEAD(&tmp->list);
         INIT_LIST_HEAD(&tmp->qos_id_list);
+        tmp->queue     = rfifo_create();
+        if (!tmp->queue) {
+                LOG_ERR("Couldn't create queue, ");
+                rkfree(tmp);
+                return NULL;
+        }
 
         return tmp;
 }
@@ -291,6 +290,7 @@ static int queue_destroy(struct cu_queue * cu_q)
                 return -1;
 
         list_del(&cu_q->list);
+        rfifo_destroy(cu_q->queue, (void (*)(void *)) pdu_destroy);
         list_for_each_entry_safe(pos, next, &cu_q->qos_id_list, list) {
                 q_qos_destroy(pos);
         }
@@ -434,10 +434,10 @@ struct cu_queue_set * queue_set_find(struct cherish_urgency_data * q,
 struct pdu * cu_rmt_dequeue_policy(struct rmt_ps      *ps,
 				   struct rmt_n1_port *n1_port)
 {
-        struct cu_queue     *entry;
+        struct cu_queue     *entry, *tmp = NULL;
         struct pdu *          ret_pdu;
         struct cu_queue_set * qset;
-        struct q_qos         *qqos, *tmp = NULL;
+        struct q_qos         *qqos;
 
         if (!ps || !n1_port || !n1_port->rmt_ps_queues) {
                 LOG_ERR("Wrong input parameters for "
@@ -452,19 +452,15 @@ struct pdu * cu_rmt_dequeue_policy(struct rmt_ps      *ps,
         tmp = NULL;
         list_for_each_entry(entry, &qset->queues, list) {
                 uint_t i;
-                get_random_bytes(&i, sizeof(i));
-                i = i % NORM_PROB;
 
                 LOG_DBG("Dequeuing from urgency class %u", entry->key);
-                list_for_each_entry(qqos, &entry->qos_id_list, list) {
-                        if (rfifo_length(qqos->queue) > 0) {
-                                tmp = qqos;
-                                if (entry->skip_prob > i) {
-                                        ret_pdu = rfifo_pop(qqos->queue);
-                                        qset->occupation--;
-                                        return ret_pdu;
-                                }
-                        }
+                get_random_bytes(&i, sizeof(i));
+                i = i % NORM_PROB;
+                tmp = entry;
+                if (entry->skip_prob > i) {
+                        ret_pdu = rfifo_pop(entry->queue);
+                        qset->occupation--;
+                        return ret_pdu;
                 }
         }
         if (tmp) {
@@ -517,7 +513,7 @@ int cu_rmt_enqueue_policy(struct rmt_ps	  *ps,
                 return RMT_PS_ENQ_DROP;
         }
 
-        if (rfifo_push_ni(q->queue, pdu)) {
+        if (rfifo_push_ni(q->cu_q->queue, pdu)) {
                 LOG_ERR("Failed to enqueue");
                 q->dropped++;
                 pdu_destroy(pdu);
@@ -606,6 +602,7 @@ void * cu_rmt_q_create_policy(struct rmt_ps      *ps,
                                      pos->drop_prob,
                                      pos->key,
                                      pos->skip_prob,
+                                     queue,
                                      &tmp->robj);
                 if (!q_qos) {
                         cu_queue_set_destroy(tmp);
