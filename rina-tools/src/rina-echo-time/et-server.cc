@@ -194,6 +194,7 @@ void EchoTimeServerWorker::servePerfFlow(int port_id)
                         memcpy(&qosid, buffer, sizeof(qosid));
                         memcpy(&ts, buffer+sizeof(qosid), sizeof(ts));
                         memcpy(&tn, buffer+sizeof(qosid)+sizeof(ts), sizeof(tn));
+                        LOG_INFO("TS: %ul - TN: %ul", ts, tn);
                         dt = tdiff_ms(ts, tn, now);
                         sum_dt+=dt;
 
