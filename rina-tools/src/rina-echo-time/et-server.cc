@@ -173,6 +173,8 @@ void EchoTimeServerWorker::servePerfFlow(int port_id)
         int qosid;
         unsigned long ts;
         unsigned long tn;
+        unsigned long dt;
+        unsigned long sum_dt = 0;
 
         // Setup a timer if dealloc_wait option is set */
         if (dw > 0) {
@@ -192,12 +194,13 @@ void EchoTimeServerWorker::servePerfFlow(int port_id)
                         memcpy(&qosid, buffer, sizeof(qosid));
                         memcpy(&ts, buffer+sizeof(qosid), sizeof(ts));
                         memcpy(&tn, buffer+sizeof(qosid)+sizeof(ts), sizeof(tn));
+                        dt = tdiff_us(ts, tn, now);
+                        sum_dt+=dt;
 
                         // Report periodic stats if needed
                         if (interval != -1 && --interval_cnt == 0) {
                                 clock_gettime(CLOCK_REALTIME, &now);
-                                //us = timespec_diff_us(last_timestamp, now);
-                                us = tdiff_us(ts, tn, now);
+                                us = timespec_diff_us(last_timestamp, now);
                                 printPerfStats(pkt_cnt, bytes_cnt, us);
 
                                 tot_pkt += pkt_cnt;
@@ -240,11 +243,11 @@ void EchoTimeServerWorker::servePerfFlow(int port_id)
 
         LOG_INFO("QoS ID: %d : Received %lu SDUs and %lu bytes in %lu us",
                         qosid, tot_pkt, tot_bytes, tot_us);
-        LOG_INFO("QoS ID: %d : Goodput: %.4f Kpps, %.4f Mbps, %.4f Mbps",
+        LOG_INFO("QoS ID: %d : Goodput: %.4f Kpps, %.4f Mbps, %.4f us",
         		qosid,
                         static_cast<float>((tot_pkt * 1000.0)/tot_us),
                         static_cast<float>((tot_bytes * 8.0)/tot_us),
-                        static_cast<float>((tot_us/tot_pkt)));
+                        static_cast<float>((sum_dt/tot_pkt)));
 
         delete [] buffer;
 }
