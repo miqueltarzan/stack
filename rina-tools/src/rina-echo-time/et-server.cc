@@ -153,6 +153,7 @@ timespec_diff_us(const struct timespec& before, const struct timespec& later)
 static unsigned long
 tdiff_ms(unsigned long ts, unsigned long tn, const struct timespec& later)
 {
+        LOG_INFO("TS: %ul - TN: %ul", later.tv_sec, later.tv_nsec);
 	return ((later.tv_sec - ts) * 1000 +
 			(later.tv_nsec - tn))/1000000;
 }
@@ -194,7 +195,6 @@ void EchoTimeServerWorker::servePerfFlow(int port_id)
                         memcpy(&qosid, buffer, sizeof(qosid));
                         memcpy(&ts, buffer+sizeof(qosid), sizeof(ts));
                         memcpy(&tn, buffer+sizeof(qosid)+sizeof(ts), sizeof(tn));
-                        LOG_INFO("TS: %ul - TN: %ul", ts, tn);
                         dt = tdiff_ms(ts, tn, now);
                         sum_dt+=dt;
 
