@@ -151,10 +151,10 @@ timespec_diff_us(const struct timespec& before, const struct timespec& later)
 }
 
 static unsigned long
-tdiff_us(unsigned long ts, unsigned long tn, const struct timespec& later)
+tdiff_ms(unsigned long ts, unsigned long tn, const struct timespec& later)
 {
-	return ((later.tv_sec - ts) * 1000000000 +
-			(later.tv_nsec - tn))/1000;
+	return ((later.tv_sec - ts) * 1000 +
+			(later.tv_nsec - tn))/1000000;
 }
 
 void EchoTimeServerWorker::servePerfFlow(int port_id)
@@ -194,7 +194,7 @@ void EchoTimeServerWorker::servePerfFlow(int port_id)
                         memcpy(&qosid, buffer, sizeof(qosid));
                         memcpy(&ts, buffer+sizeof(qosid), sizeof(ts));
                         memcpy(&tn, buffer+sizeof(qosid)+sizeof(ts), sizeof(tn));
-                        dt = tdiff_us(ts, tn, now);
+                        dt = tdiff_ms(ts, tn, now);
                         sum_dt+=dt;
 
                         // Report periodic stats if needed

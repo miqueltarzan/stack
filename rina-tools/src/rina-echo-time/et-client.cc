@@ -486,8 +486,9 @@ void Client::perfFlow(int port_id)
         while (n < echo_times) {
         	clock_gettime(CLOCK_REALTIME, &now);
                 memcpy(buffer, &qosid, sizeof(qosid));
-                ts = now.tv_sec;
-                tn = now.tv_nsec;
+                ts = (unsigned long) now.tv_sec;
+                tn = (unsigned long) now.tv_nsec;
+                LOG_INFO("TS: %ul - TN: %ul", ts, tn);
                 memcpy(buffer+sizeof(qosid), &ts, sizeof(ts));
                 memcpy(buffer+sizeof(qosid)+sizeof(ts), &tn, sizeof(tn));
 
