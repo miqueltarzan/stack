@@ -479,6 +479,7 @@ void Client::perfFlow(int port_id)
         for (unsigned int i = 0; i < data_size; i++) {
                 buffer[i] = static_cast<char>(i * i);
         }
+        memcpy(buffer, &qosid, sizeof(qosid));
 
         while (n < echo_times) {
                 ipcManager->writeSDU(port_id, buffer, data_size);
