@@ -195,12 +195,12 @@ void EchoTimeServerWorker::servePerfFlow(int port_id)
                         memcpy(&qosid, buffer, sizeof(qosid));
                         memcpy(&ts, buffer+sizeof(qosid), sizeof(ts));
                         memcpy(&tn, buffer+sizeof(qosid)+sizeof(ts), sizeof(tn));
+                        clock_gettime(CLOCK_REALTIME, &now);
                         dt = tdiff_ms(ts, tn, now);
                         sum_dt+=dt;
 
                         // Report periodic stats if needed
                         if (interval != -1 && --interval_cnt == 0) {
-                                clock_gettime(CLOCK_REALTIME, &now);
                                 us = timespec_diff_us(last_timestamp, now);
                                 printPerfStats(pkt_cnt, bytes_cnt, us);
 
