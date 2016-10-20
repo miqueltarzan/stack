@@ -183,11 +183,11 @@ void EchoTimeServerWorker::servePerfFlow(int port_id)
                         }
                         if (pkt_cnt == 0) {
                         	clock_gettime(CLOCK_REALTIME, &init_ts);
-                                memcpy(&qosid, buffer, sizeof(qosid));
                         }
                         pkt_cnt++;
                         bytes_cnt += sdu_size;
                         clock_gettime(CLOCK_REALTIME, &fini_ts);
+                        memcpy(&qosid, buffer, sizeof(qosid));
 
                         // Report periodic stats if needed
                         if (interval != -1 && --interval_cnt == 0) {
@@ -233,7 +233,7 @@ void EchoTimeServerWorker::servePerfFlow(int port_id)
                 LOG_INFO("Discarded %lu SDUs", pkt_cnt);
         }
 
-        dt = us = timespec_diff_us(init_ts, fini_ts);
+        dt = timespec_diff_us(init_ts, fini_ts);
 
         LOG_INFO("QoS ID: %d : Received %lu SDUs and %lu bytes in %lu us",
                         qosid, tot_pkt, tot_bytes, tot_us);
