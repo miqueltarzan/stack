@@ -492,8 +492,10 @@ struct pdu * cu_rmt_dequeue_policy(struct rmt_ps      *ps,
                         get_random_bytes(&i, sizeof(i));
                         i = i % NORM_PROB;
                         if (rfifo_length(qqos->queue) > 0) {
-                                tmp = qqos;
-                                if (entry->skip_prob > i) {
+                                if (!tmp)
+                                	tmp = qqos;
+
+                                if (entry->skip_prob >= i) {
                                 	ret_pdu = dequeue_mark_ecn_pdu(qqos, qset);
                                         return ret_pdu;
                                 }
@@ -517,9 +519,15 @@ int cu_rmt_enqueue_policy(struct rmt_ps	  *ps,
         int                   i;
         qos_id_t              qos_id;
 
-        if (!ps || !n1_port || !pdu) {
+        if (!pdu) {
+        	LOG_ERR("Policy RMT enqueue called with no PDU");
+                return RMT_PS_ENQ_ERR;
+        }
+
+        if (!ps || !n1_port) {
                 LOG_ERR("Wrong input parameters for "
-                        "rmt_enqueu_scheduling_policy_tx");
+                        "rmt_enqueue_scheduling_policy_tx");
+                pdu_destroy(pdu);
                 return RMT_PS_ENQ_ERR;
         }
 
