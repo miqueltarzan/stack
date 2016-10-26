@@ -79,7 +79,7 @@ struct cu_queue_set {
         struct list_head queues;
         port_id_t        port_id;
         struct list_head list;
-        ssize_t          occupation;
+        uint_t           occupation;
         struct robject   robj;
 };
 
@@ -495,7 +495,7 @@ struct pdu * cu_rmt_dequeue_policy(struct rmt_ps      *ps,
                                 if (!tmp)
                                 	tmp = qqos;
 
-                                if (entry->skip_prob >= i) {
+                                if (entry->skip_prob <= i) {
                                 	ret_pdu = dequeue_mark_ecn_pdu(qqos, qset);
                                         return ret_pdu;
                                 }
