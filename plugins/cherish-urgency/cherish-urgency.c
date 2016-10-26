@@ -610,6 +610,8 @@ void * cu_rmt_q_create_policy(struct rmt_ps      *ps,
         struct cu_queue_set * tmp;
         struct cu_queue *     queue;
         struct q_qos *        q_qos;
+        struct cu_queue     *entry;
+        struct q_qos         *qqos;
 
         if (!ps || !n1_port || !data) {
                 LOG_ERR("Wrong input parameters for "
@@ -652,8 +654,15 @@ void * cu_rmt_q_create_policy(struct rmt_ps      *ps,
                         cu_queue_set_destroy(tmp);
                         return NULL;
                 }
-                LOG_INFO("Added queue for QoS id %u", pos->qos_id);
                 list_add(&q_qos->list, &queue->qos_id_list);
+        }
+
+
+        list_for_each_entry(entry, &tmp->queues, list) {
+                LOG_INFO("Dequeuing from urgency class %u", entry->key);
+                list_for_each_entry(qqos, &entry->qos_id_list, list) {
+                	LOG_INFO("Added queue for QoS id %u", qqos->qos_id);
+                }
         }
 
         return tmp;
