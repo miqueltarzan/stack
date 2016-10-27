@@ -375,7 +375,7 @@ createFlowAllocatorDelayBasedPs(rina::ApplicationEntity * ctx)
                 return NULL;
         }
 
-        return new FlowAllocatorRoundRobinPs(fa);
+        return new FlowAllocatorDelayBasedPs(fa);
 }
 
 extern "C" void
