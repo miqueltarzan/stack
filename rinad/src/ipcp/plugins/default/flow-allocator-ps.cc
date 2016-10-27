@@ -257,7 +257,7 @@ configs::Flow * FlowAllocatorDelayBasedPs::newFlowRequest(IPCProcess * ipc_proce
         std::list<rina::QoSCube*> qosCubes = dm->ipcp->resource_allocator_->getQoSCubes();
         std::list<rina::QoSCube*>::const_iterator iterator;
         const rina::FlowSpecification& flowSpec = event.flowSpecification;
-	rina::QoSCube * cube;
+	rina::QoSCube * cube = NULL;
         int count;
         rina::Lockable lock;
         rina::ScopedLock g(lock);
@@ -283,7 +283,7 @@ configs::Flow * FlowAllocatorDelayBasedPs::newFlowRequest(IPCProcess * ipc_proce
 		qosCube = cube;
 	}
 
-	LOG_IPCP_INFO("Selected qos cube with name %s and ID: %d", qosCube->get_name().c_str(), flowSpec.delay);
+	LOG_IPCP_INFO("Selected qos cube with name %s and ID: %d", qosCube->get_name().c_str(), qosCube->id_);
 
 	flow = dm->createFlow();
 	flow->destination_naming_info = event.remoteApplicationName;
