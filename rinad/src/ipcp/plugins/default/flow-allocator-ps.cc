@@ -270,7 +270,9 @@ configs::Flow * FlowAllocatorDelayBasedPs::newFlowRequest(IPCProcess * ipc_proce
 	} else {
 		count = 0;
 		for (iterator = qosCubes.begin(); iterator != qosCubes.end(); ++iterator) {
-			cube = *iterator;
+			if (!cube)
+				cube = *iterator;
+
 			if (flowSpec.delay == cube->get_delay()) {
 				qosCube = cube;
 				break;
@@ -281,7 +283,7 @@ configs::Flow * FlowAllocatorDelayBasedPs::newFlowRequest(IPCProcess * ipc_proce
 		qosCube = cube;
 	}
 
-	LOG_IPCP_DBG("Selected qos cube with name %s", qosCube->get_name().c_str());
+	LOG_IPCP_INFO("Selected qos cube with name %s and ID: %d", qosCube->get_name().c_str(), flowSpec.delay);
 
 	flow = dm->createFlow();
 	flow->destination_naming_info = event.remoteApplicationName;
