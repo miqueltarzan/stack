@@ -442,9 +442,10 @@ static struct pdu * dequeue_mark_ecn_pdu(struct q_qos * qqos,
 				 	 struct cu_queue_set * qset)
 {
         struct pdu * ret_pdu;
+#if 0
         struct pci * pci;
         pdu_flags_t  pci_flags;
-
+#endif
 
         ret_pdu = rfifo_pop(qqos->queue);
         qset->occupation--;
