@@ -275,7 +275,7 @@ configs::Flow * FlowAllocatorDelayBasedPs::newFlowRequest(IPCProcess * ipc_proce
 
 			LOG_IPCP_INFO("Candidate QoS cube ID: %d", (*iterator)->get_id());
 			if (flowSpec.delay == (*iterator)->get_id()) {
-				qosCube = cube;
+				qosCube = *iterator;
 				break;
 			}
 		}
