@@ -258,7 +258,6 @@ configs::Flow * FlowAllocatorDelayBasedPs::newFlowRequest(IPCProcess * ipc_proce
         std::list<rina::QoSCube*>::const_iterator iterator;
         const rina::FlowSpecification& flowSpec = event.flowSpecification;
 	rina::QoSCube * cube = NULL;
-        int count;
         rina::Lockable lock;
         rina::ScopedLock g(lock);
 
@@ -270,13 +269,12 @@ configs::Flow * FlowAllocatorDelayBasedPs::newFlowRequest(IPCProcess * ipc_proce
 		LOG_IPCP_INFO("There is only ONE QoS cube");
 		qosCube = qosCubes.front();
 	} else {
-		count = 0;
 		for (iterator = qosCubes.begin(); iterator != qosCubes.end(); ++iterator) {
 			if (!cube)
 				cube = *iterator;
 
-			LOG_IPCP_INFO("Candidate QoS cube ID: %d", cube->get_id());
-			if (flowSpec.delay == cube->get_id()) {
+			LOG_IPCP_INFO("Candidate QoS cube ID: %d", (*iterator)->get_id());
+			if (flowSpec.delay == (*iterator)->get_id()) {
 				qosCube = cube;
 				break;
 			}
