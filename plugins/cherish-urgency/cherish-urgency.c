@@ -503,7 +503,7 @@ struct pdu * cu_rmt_dequeue_policy(struct rmt_ps      *ps,
                 }
         }
         if (tmp) {
-        	ret_pdu = dequeue_mark_ecn_pdu(qqos, qset);
+        	ret_pdu = dequeue_mark_ecn_pdu(tmp, qset);
                 return ret_pdu;
         }
 
