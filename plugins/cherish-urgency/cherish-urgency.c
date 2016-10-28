@@ -499,6 +499,7 @@ struct pdu * cu_rmt_dequeue_policy(struct rmt_ps      *ps,
                         i = i % NORM_PROB;
                 	LOG_CRIT("PROB : %u", i);
                         if (rfifo_length(qqos->queue) > 0) {
+                        	LOG_CRIT("ONE QUEUE with PDUs");
                                 if (!tmp)
                                 	tmp = qqos;
 
