@@ -485,6 +485,7 @@ struct pdu * cu_rmt_dequeue_policy(struct rmt_ps      *ps,
         if (!qset)
                 return NULL;
 
+        LOG_CRIT("DEQUEUEING");
         tmp = NULL;
         list_for_each_entry(entry, &qset->queues, list) {
         	uint_t i = 0;
@@ -495,7 +496,7 @@ struct pdu * cu_rmt_dequeue_policy(struct rmt_ps      *ps,
                 	}
                         get_random_bytes(&i, sizeof(i));
                         i = i % NORM_PROB;
-                	LOG_ERR("PROB : %u", i)
+                	LOG_CRIT("PROB : %u", i)
                         if (rfifo_length(qqos->queue) > 0) {
                                 if (!tmp)
                                 	tmp = qqos;
