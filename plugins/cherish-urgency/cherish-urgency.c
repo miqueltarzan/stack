@@ -448,6 +448,7 @@ static struct pdu * dequeue_mark_ecn_pdu(struct q_qos * qqos,
 
         ret_pdu = rfifo_pop(qqos->queue);
         qset->occupation--;
+#if 0
         if (!qqos->ecn_th) {
         	return ret_pdu;
         }
@@ -462,7 +463,7 @@ static struct pdu * dequeue_mark_ecn_pdu(struct q_qos * qqos,
         }
         pci_flags = pci_flags_get(pci);
         pci_flags_set(pci, pci_flags |= PDU_FLAGS_EXPLICIT_CONGESTION);
-
+#endif
         return ret_pdu;
 }
 
@@ -494,22 +495,26 @@ struct pdu * cu_rmt_dequeue_policy(struct rmt_ps      *ps,
                 	}
                         get_random_bytes(&i, sizeof(i));
                         i = i % NORM_PROB;
+                	LOG_ERR("PROB : %u", i)
                         if (rfifo_length(qqos->queue) > 0) {
                                 if (!tmp)
                                 	tmp = qqos;
 
-                                if (entry->skip_prob <= i) {
+                                if (entry->skip_prob < i) {
                                 	ret_pdu = dequeue_mark_ecn_pdu(qqos, qset);
                                         return ret_pdu;
                                 }
+                        	LOG_ERR("SKIPPING");
                         }
                 }
 		i = 0;
         }
         if (tmp) {
+        	LOG_ERR("OK DEQUEUEING");
         	ret_pdu = dequeue_mark_ecn_pdu(tmp, qset);
                 return ret_pdu;
         }
+	LOG_ERR("FAILED DEQUEUEING");
 
         return NULL;
 }
