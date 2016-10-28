@@ -486,9 +486,12 @@ struct pdu * cu_rmt_dequeue_policy(struct rmt_ps      *ps,
 
         tmp = NULL;
         list_for_each_entry(entry, &qset->queues, list) {
+        	uint_t i = 0;
                 LOG_DBG("Dequeuing from urgency class %u", entry->key);
                 list_for_each_entry(qqos, &entry->qos_id_list, list) {
-                        uint_t i;
+                	if (i != 0) {
+                		continue;
+                	}
                         get_random_bytes(&i, sizeof(i));
                         i = i % NORM_PROB;
                         if (rfifo_length(qqos->queue) > 0) {
@@ -501,6 +504,7 @@ struct pdu * cu_rmt_dequeue_policy(struct rmt_ps      *ps,
                                 }
                         }
                 }
+		i = 0;
         }
         if (tmp) {
         	ret_pdu = dequeue_mark_ecn_pdu(tmp, qset);
