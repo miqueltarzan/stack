@@ -497,7 +497,7 @@ struct pdu * cu_rmt_dequeue_policy(struct rmt_ps      *ps,
                 	}
                         get_random_bytes(&i, sizeof(i));
                         i = i % NORM_PROB;
-                	LOG_CRIT("PROB : %u", i)
+                	LOG_CRIT("PROB : %u", i);
                         if (rfifo_length(qqos->queue) > 0) {
                                 if (!tmp)
                                 	tmp = qqos;
