@@ -262,6 +262,7 @@ configs::Flow * FlowAllocatorDelayBasedPs::newFlowRequest(IPCProcess * ipc_proce
         rina::Lockable lock;
         rina::ScopedLock g(lock);
 
+        LOG_IPCP_INFO("Flow Specification delay %d and %d", event.flowSpecification.delay, flowSpec.delay);
 	if (*(qosCubes.begin())==NULL)
 	    throw rina::Exception("No QoSCubes defined.");
 
@@ -273,7 +274,7 @@ configs::Flow * FlowAllocatorDelayBasedPs::newFlowRequest(IPCProcess * ipc_proce
 			if (!cube)
 				cube = *iterator;
 
-			if (flowSpec.delay == cube->get_delay()) {
+			if (flowSpec.delay == cube->get_id()) {
 				qosCube = cube;
 				break;
 			}
