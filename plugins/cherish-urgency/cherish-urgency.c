@@ -474,7 +474,7 @@ struct pdu * cu_rmt_dequeue_policy(struct rmt_ps      *ps,
         struct cu_queue     *entry;
         struct pdu *          ret_pdu;
         struct cu_queue_set * qset;
-        struct q_qos         *qqos, *tmp = NULL;
+        struct q_qos         *qqos;
 
         if (!ps || !n1_port || !n1_port->rmt_ps_queues) {
                 LOG_ERR("Wrong input parameters for "
@@ -486,36 +486,31 @@ struct pdu * cu_rmt_dequeue_policy(struct rmt_ps      *ps,
         if (!qset)
                 return NULL;
 
-        LOG_CRIT("DEQUEUEING");
-        tmp = NULL;
         list_for_each_entry(entry, &qset->queues, list) {
         	uint_t i = 0;
+                get_random_bytes(&i, sizeof(i));
+                i = i % NORM_PROB;
+                if (entry->skip_prob >= i) {
+                	LOG_CRIT("PROB : %u", i);
+                	continue;
+                }
                 LOG_DBG("Dequeuing from urgency class %u", entry->key);
                 list_for_each_entry(qqos, &entry->qos_id_list, list) {
-                	if (i != 0) {
-                		continue;
-                	}
-                        get_random_bytes(&i, sizeof(i));
-                        i = i % NORM_PROB;
-                	LOG_CRIT("PROB : %u", i);
                         if (rfifo_length(qqos->queue) > 0) {
-                        	LOG_CRIT("ONE QUEUE with PDUs");
-                                if (!tmp)
-                                	tmp = qqos;
-
-                                if (entry->skip_prob < i) {
-                                	ret_pdu = dequeue_mark_ecn_pdu(qqos, qset);
-                                        return ret_pdu;
-                                }
-                        	LOG_ERR("SKIPPING");
+                        	ret_pdu = dequeue_mark_ecn_pdu(qqos, qset);
+                                return ret_pdu;
                         }
                 }
-		i = 0;
         }
-        if (tmp) {
-        	LOG_ERR("OK DEQUEUEING");
-        	ret_pdu = dequeue_mark_ecn_pdu(tmp, qset);
-                return ret_pdu;
+
+        list_for_each_entry(entry, &qset->queues, list) {
+                LOG_DBG("Dequeuing from urgency class %u", entry->key);
+                list_for_each_entry(qqos, &entry->qos_id_list, list) {
+                        if (rfifo_length(qqos->queue) > 0) {
+                        	ret_pdu = dequeue_mark_ecn_pdu(qqos, qset);
+                                return ret_pdu;
+                        }
+                }
         }
 	LOG_ERR("FAILED DEQUEUEING");
 
