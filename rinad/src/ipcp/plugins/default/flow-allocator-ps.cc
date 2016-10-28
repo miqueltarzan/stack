@@ -267,6 +267,7 @@ configs::Flow * FlowAllocatorDelayBasedPs::newFlowRequest(IPCProcess * ipc_proce
 	    throw rina::Exception("No QoSCubes defined.");
 
 	if (qosCubes.size() == 1) {
+		LOG_IPCP_INFO("There is only ONE QoS cube");
 		qosCube = qosCubes.front();
 	} else {
 		count = 0;
@@ -274,6 +275,7 @@ configs::Flow * FlowAllocatorDelayBasedPs::newFlowRequest(IPCProcess * ipc_proce
 			if (!cube)
 				cube = *iterator;
 
+			LOG_IPCP_INFO("Candidate QoS cube ID: %d", cube->get_id());
 			if (flowSpec.delay == cube->get_id()) {
 				qosCube = cube;
 				break;
