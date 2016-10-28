@@ -573,6 +573,7 @@ int cu_rmt_enqueue_policy(struct rmt_ps	  *ps,
         }
         LOG_DBG("PDU enqueued");
         qset->occupation++;
+        q->queued_pdus++;
 
         return RMT_PS_ENQ_SCHED;
 }
