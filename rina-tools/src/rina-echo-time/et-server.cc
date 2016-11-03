@@ -164,6 +164,9 @@ void EchoTimeServerWorker::servePerfFlow(int port_id)
         struct timespec last_timestamp;
         struct timespec init_ts;
         struct timespec fini_ts;
+        struct timespec aux;
+        unsigned long dt_sq;
+        unsigned long sum_dt_sq = 0;
         struct timespec now;
         int qosid;
         unsigned long dt;
@@ -186,7 +189,11 @@ void EchoTimeServerWorker::servePerfFlow(int port_id)
                         }
                         pkt_cnt++;
                         bytes_cnt += sdu_size;
+                        aux = fini_ts;
                         clock_gettime(CLOCK_REALTIME, &fini_ts);
+                        dt_sq = timespec_diff_us(aux, fini_ts);
+                        dt_sq = dt_sq*dt_sq;
+                        sum_dt_sq += dt_sq;
                         memcpy(&qosid, buffer, sizeof(qosid));
 
                         // Report periodic stats if needed
@@ -237,11 +244,12 @@ void EchoTimeServerWorker::servePerfFlow(int port_id)
 
         LOG_INFO("QoS ID: %d : Received %lu SDUs and %lu bytes in %lu us",
                         qosid, tot_pkt, tot_bytes, tot_us);
-        LOG_INFO("QoS ID: %d : Goodput: %.4f Kpps, %.4f Mbps, %.4f us",
+        LOG_INFO("QoS ID: %d : Goodput: %.4f Kpps, %.4f Mbps, %.4f us, %.4f us2",
         		qosid,
                         static_cast<float>((tot_pkt * 1000.0)/tot_us),
                         static_cast<float>((tot_bytes * 8.0)/tot_us),
-                        static_cast<float>((dt/tot_pkt)));
+                        static_cast<float>((dt/tot_pkt)),
+                        static_cast<float>((sum_dt_sq/tot_pkt)));
 
         delete [] buffer;
 }
