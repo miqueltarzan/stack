@@ -186,6 +186,7 @@ void EchoTimeServerWorker::servePerfFlow(int port_id)
                         }
                         if (pkt_cnt == 0) {
                         	clock_gettime(CLOCK_REALTIME, &init_ts);
+                                clock_gettime(CLOCK_REALTIME, &fini_ts);
                         }
                         pkt_cnt++;
                         bytes_cnt += sdu_size;
