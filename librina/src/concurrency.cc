@@ -325,7 +325,7 @@ void Thread::start()
 	}
 
 	if (thread_attrs->getName() != "")
-		pthread_setname_np(thread_id_, thread_attrs->getName().c_str());
+		//pthread_setname_np(thread_id_, thread_attrs->getName().c_str());
 }
 
 pthread_t Thread::getThreadType() const{
