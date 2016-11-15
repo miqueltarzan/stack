@@ -168,7 +168,7 @@ void EchoTimeServerWorker::servePerfFlow(int port_id)
         unsigned long dt_sq;
         unsigned long sum_dt_sq = 0;
         struct timespec now;
-        int delay;
+        int delay = 0;
         unsigned long dt;
 
         // Setup a timer if dealloc_wait option is set */
