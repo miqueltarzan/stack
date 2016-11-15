@@ -168,7 +168,7 @@ void EchoTimeServerWorker::servePerfFlow(int port_id)
         unsigned long dt_sq;
         unsigned long sum_dt_sq = 0;
         struct timespec now;
-        int qosid;
+        int delay;
         unsigned long dt;
 
         // Setup a timer if dealloc_wait option is set */
@@ -195,7 +195,7 @@ void EchoTimeServerWorker::servePerfFlow(int port_id)
                         dt_sq = timespec_diff_us(aux, fini_ts);
                         dt_sq = dt_sq*dt_sq;
                         sum_dt_sq += dt_sq;
-                        memcpy(&qosid, buffer, sizeof(qosid));
+                        memcpy(&delay, buffer, sizeof(delay));
 
                         // Report periodic stats if needed
                         if (interval != -1 && --interval_cnt == 0) {
@@ -243,14 +243,10 @@ void EchoTimeServerWorker::servePerfFlow(int port_id)
 
         dt = timespec_diff_us(init_ts, fini_ts);
 
-        LOG_INFO("QoS ID: %d : Received %lu SDUs and %lu bytes in %lu us",
-                        qosid, tot_pkt, tot_bytes, tot_us);
-        LOG_INFO("QoS ID: %d : Goodput: %.4f Kpps, %.4f Mbps, %.4f us, %.4f us2",
-        		qosid,
-                        static_cast<float>((tot_pkt * 1000.0)/tot_us),
-                        static_cast<float>((tot_bytes * 8.0)/tot_us),
-                        static_cast<float>((dt/tot_pkt)),
-                        static_cast<float>((sum_dt_sq/tot_pkt)));
+        cout << "Delay: " << delay << " Received " << tot_pkt << "SDUs and " << tot_bytes << " bytes in " << tot_us << " us";
+        cout << "Delay: " << delay << " Goodput: " << static_cast<float>((tot_pkt * 1000.0)/tot_us) << " Kpps, " <<
+        	static_cast<float>((tot_bytes * 8.0)/tot_us) << " Mbps, Delay: " <<  static_cast<float>(dt/tot_pkt) <<
+        	" us, Jitter :" << static_cast<float>((sum_dt_sq/tot_pkt)) << "us2" << endl;
 
         delete [] buffer;
 }

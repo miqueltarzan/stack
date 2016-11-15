@@ -115,12 +115,12 @@ Client::Client(const string& t_type,
                const string& server_apn, const string& server_api,
                bool q, unsigned long count,
                bool registration, unsigned int size,
-               int w, int g, int dw, unsigned int lw, int rt, int qosid) :
+               int w, int g, int dw, unsigned int lw, int rt, int delay) :
         Application(dif_nms, apn, api), test_type(t_type), dif_name(dif_nms.front()),
         server_name(server_apn), server_instance(server_api),
         quiet(q), echo_times(count),
         client_app_reg(registration), data_size(size), wait(w), gap(g),
-        dealloc_wait(dw), lost_wait(lw), rate(rt), qosid(qosid), snd(0), nsdus(0), m2(0),
+        dealloc_wait(dw), lost_wait(lw), rate(rt), delay(delay), snd(0), nsdus(0), m2(0),
         sdus_received(0), min_rtt(LONG_MAX), max_rtt(0), average_rtt(0)		
 {
 }
@@ -170,7 +170,7 @@ int Client::createFlow()
         if (gap >= 0)
                 qosspec.maxAllowableGap = gap;
 
-        qosspec.delay = qosid;
+        qosspec.delay = delay;
 
         get_current_time(begintp);
 
@@ -456,7 +456,7 @@ void Client::floodFlow(int port_id)
 
 	unsigned long rt = 0;
 	if (sdus_sent > 0) rt = ((sdus_sent - sdus_received)*100/sdus_sent);
-	cout << "QoS ID: "<< qosid << " ;SDUs sent: "<< sdus_sent << "; SDUs received: " << sdus_received
+	cout << "MAX delay: "<< delay << " ;SDUs sent: "<< sdus_sent << "; SDUs received: " << sdus_received
 	     << "; " << rt << "% SDU loss"
 	     << "Minimum RTT: " << min_rtt << " ms; Maximum RTT: " << max_rtt
 			<< " ms; Average RTT:" << average_rtt
@@ -480,7 +480,7 @@ void Client::perfFlow(int port_id)
         for (unsigned int i = 0; i < data_size; i++) {
                 buffer[i] = static_cast<char>(i * i);
         }
-        memcpy(buffer, &qosid, sizeof(qosid));
+        memcpy(buffer, &delay, sizeof(delay));
 
         while (n < echo_times) {
                 ipcManager->writeSDU(port_id, buffer, data_size);

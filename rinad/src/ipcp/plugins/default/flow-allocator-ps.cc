@@ -270,13 +270,15 @@ configs::Flow * FlowAllocatorDelayBasedPs::newFlowRequest(IPCProcess * ipc_proce
 		qosCube = qosCubes.front();
 	} else {
 		for (iterator = qosCubes.begin(); iterator != qosCubes.end(); ++iterator) {
-			if (!cube)
+			if (!cube) {
 				cube = *iterator;
-
-			LOG_IPCP_INFO("Candidate QoS cube ID: %d", (*iterator)->get_id());
-			if (flowSpec.delay == (*iterator)->get_id()) {
 				qosCube = *iterator;
-				break;
+			}
+
+			LOG_IPCP_INFO("Candidate QoS cube ID: %d", (*iterator)->get_delay());
+			if (flowSpec.delay >= (*iterator)->get_delay()) {
+				if (qosCube->get_delay() < (*iterator)->get_delay())
+					qosCube = *iterator;
 			}
 		}
 	}

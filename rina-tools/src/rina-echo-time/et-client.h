@@ -86,7 +86,7 @@ public:
                int dw,
                unsigned int lw,
                int rt,
-               int qosid);
+               int delay);
        void run();
        int readSDU(int portId, void * sdu, int maxBytes, unsigned int timout);
        void map_push(unsigned long sn, timespec tp);
@@ -116,7 +116,7 @@ private:
         int dealloc_wait;
         unsigned int lost_wait;
         int rate;
-        int qosid;
+        int delay;
         rina::Sleep sleep_wrapper;
         Sender * startSender(int port_id);
         rina::Lockable lock;
