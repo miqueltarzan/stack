@@ -243,8 +243,8 @@ void EchoTimeServerWorker::servePerfFlow(int port_id)
 
         dt = timespec_diff_us(init_ts, fini_ts);
 
-        cout << "Delay: " << delay << " Received " << tot_pkt << "SDUs and " << tot_bytes << " bytes in " << tot_us << " us";
-        cout << "Delay: " << delay << " Goodput: " << static_cast<float>((tot_pkt * 1000.0)/tot_us) << " Kpps, " <<
+        cout << "Delay: " << delay << " Received " << tot_pkt << " SDUs and " << tot_bytes << " bytes in " << tot_us << " us"
+        	<< " Goodput: " << static_cast<float>((tot_pkt * 1000.0)/tot_us) << " Kpps, " <<
         	static_cast<float>((tot_bytes * 8.0)/tot_us) << " Mbps, Delay: " <<  static_cast<float>(dt/tot_pkt) <<
         	" us, Jitter :" << static_cast<float>((sum_dt_sq/tot_pkt)) << "us2" << endl;
 

@@ -261,8 +261,7 @@ configs::Flow * FlowAllocatorDelayBasedPs::newFlowRequest(IPCProcess * ipc_proce
         rina::Lockable lock;
         rina::ScopedLock g(lock);
 
-        LOG_IPCP_INFO("Flow Specification delay %d and %d", event.flowSpecification.delay, flowSpec.delay);
-	if (*(qosCubes.begin())==NULL)
+        if (*(qosCubes.begin())==NULL)
 	    throw rina::Exception("No QoSCubes defined.");
 
 	if (qosCubes.size() == 1) {
@@ -275,7 +274,6 @@ configs::Flow * FlowAllocatorDelayBasedPs::newFlowRequest(IPCProcess * ipc_proce
 				qosCube = *iterator;
 			}
 
-			LOG_IPCP_INFO("Candidate QoS cube ID: %d", (*iterator)->get_delay());
 			if (flowSpec.delay >= (*iterator)->get_delay()) {
 				if (qosCube->get_delay() < (*iterator)->get_delay())
 					qosCube = *iterator;
@@ -286,7 +284,7 @@ configs::Flow * FlowAllocatorDelayBasedPs::newFlowRequest(IPCProcess * ipc_proce
 		qosCube = cube;
 	}
 
-	LOG_IPCP_INFO("Selected qos cube with name %s and ID: %d", qosCube->get_name().c_str(), qosCube->id_);
+	LOG_IPCP_INFO("Selected qos cube with name %s", qosCube->get_name().c_str());
 
 	flow = dm->createFlow();
 	flow->destination_naming_info = event.remoteApplicationName;
