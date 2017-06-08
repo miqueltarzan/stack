@@ -33,6 +33,7 @@
 #define RMT_PS_ENQ_SCHED 1	/* PDU enqueued and RMT needs to schedule */
 #define RMT_PS_ENQ_ERR   2	/* Error */
 #define RMT_PS_ENQ_DROP  3	/* PDU dropped due to queue full occupation */
+#define RMT_PS_ENQ_SEND  0      /* PDU can be send */
 
 struct rmt_ps {
 	struct ps_base base;

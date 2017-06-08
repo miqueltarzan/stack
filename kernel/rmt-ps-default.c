@@ -177,28 +177,34 @@ int default_rmt_enqueue_policy(struct rmt_ps	  *ps,
 		LOG_ERR("Wrong input parameters");
 		return RMT_PS_ENQ_ERR;
 	}
+	if (n1_port->stats.plen 				||
+		n1_port->wbusy 					||
+		n1_port->state == N1_PORT_STATE_DISABLED) {
+		q = n1_port->rmt_ps_queues;
+		if (!q) {
+			LOG_ERR("Could not find queue for n1_port %u",
+				n1_port->port_id);
+			pdu_destroy(pdu);
+			return RMT_PS_ENQ_ERR;
+		}
 
-	q = n1_port->rmt_ps_queues;
-	if (!q) {
-		LOG_ERR("Could not find queue for n1_port %u",
-			n1_port->port_id);
-		pdu_destroy(pdu);
-		return RMT_PS_ENQ_ERR;
-	}
+		pdu_type = pci_type(pdu_pci_get_ro(pdu));
+		if (pdu_type == PDU_TYPE_MGMT) {
+			rfifo_push_ni(q->mgt_queue, pdu);
+			return RMT_PS_ENQ_SCHED;
+		}
 
-	pdu_type = pci_type(pdu_pci_get_ro(pdu));
-	if (pdu_type == PDU_TYPE_MGMT) {
-		rfifo_push_ni(q->mgt_queue, pdu);
+		if (rfifo_length(q->dt_queue) >= data->q_max) {
+			pdu_destroy(pdu);
+			return RMT_PS_ENQ_DROP;
+		}
+
+		rfifo_push_ni(q->dt_queue, pdu);
 		return RMT_PS_ENQ_SCHED;
 	}
 
-	if (rfifo_length(q->dt_queue) >= data->q_max) {
-		pdu_destroy(pdu);
-		return RMT_PS_ENQ_DROP;
-	}
+	return RMT_PS_ENQ_SEND;
 
-	rfifo_push_ni(q->dt_queue, pdu);
-	return RMT_PS_ENQ_SCHED;
 }
 EXPORT_SYMBOL(default_rmt_enqueue_policy);
 
