@@ -478,8 +478,10 @@ int kfa_flow_du_write(struct kfa  *kfa,
 	struct ipcp_instance *ipcp;
 	int		      retval = 0;
 	size_t max_sdu_size = 0;
+	ssize_t length = du_len(du);
 
-	LOG_DBG("Trying to write SDU to port-id %d", id);
+	LOG_DBG("Trying to write SDU of length %zd to port-id %d",
+		length, id);
 
 	spin_lock_bh(&kfa->lock);
 
@@ -499,10 +501,10 @@ int kfa_flow_du_write(struct kfa  *kfa,
 
 	ipcp = flow->ipc_process;
 	max_sdu_size = ipcp->ops->max_sdu_size(ipcp->data);
-	if (du_len(du) > max_sdu_size) {
+	if (length > max_sdu_size) {
 		spin_unlock_bh(&kfa->lock);
 		LOG_ERR("SDU is larger than the max SDU handled by "
-				"the IPCP: %zd, %zd", max_sdu_size, du_len(du));
+				"the IPCP: %zd, %zd", max_sdu_size, length);
 		du_destroy(du);
 	        return -EMSGSIZE;
 	}
@@ -529,7 +531,7 @@ int kfa_flow_du_write(struct kfa  *kfa,
 		LOG_ERR("Couldn't write SDU on port-id %d", id);
 		retval = -EIO;
 	} else {
-		retval = du_len(du);
+		retval = length;
 	}
 	spin_lock_bh(&kfa->lock);
 
@@ -1155,7 +1157,8 @@ int kfa_flow_create(struct kfa           *instance,
 	/* Determine if this is an IP tunnel */
 	if (ip_flow) {
 		sprintf(name, "rina.%u.%u", ipc_id, pid);
-		flow->ip_dev = rina_dev_create(name, instance, pid);
+		flow->ip_dev = rina_dev_create(name, instance, pid,
+					       ipcp->ops->max_sdu_size(ipcp->data));
 		if (!flow->ip_dev) {
 			LOG_ERR("Could not allocate memory for RINA IP virtual device");
 			rkfree(flow);
