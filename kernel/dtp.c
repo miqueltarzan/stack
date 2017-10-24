@@ -44,6 +44,7 @@
 
 #define TO_POST_LENGTH 100
 #define TO_SEND_LENGTH 16
+#define AMIN 5 /* Min value of A for implementation */
 
 static struct policy_set_list policy_sets = {
         .head = LIST_HEAD_INIT(policy_sets.head)
@@ -477,12 +478,6 @@ static void tf_receiver_inactivity(void * data)
 }
 
 /*
- * NOTE:
- *   AF is the factor to which A is divided in order to obtain the
- *   period of the A-timer: Ta = A / AF
- */
-#define AF 1
-/*
  * FIXME: removed the static so that dtcp's sending_ack policy can use this
  * function. This has to be refactored and evaluate how much code would be
  * repeated
@@ -523,6 +518,8 @@ struct pci * process_A_expiration(struct dtp * dtp, struct dtcp * dtcp)
         rcu_read_unlock();
 
         spin_lock_bh(&dtp->sv_lock);
+
+        /* No correction to value of A is needed here */
         a = msecs_to_jiffies(dtp->sv->A);
 
         /* FIXME: Invoke delimiting */
@@ -621,6 +618,7 @@ static void tf_a(void * o)
 
         spin_lock_bh(&dtp->sv_lock);
         a = dtp->sv->A;
+        if (!a) a = AMIN;
         r = dtp->sv->R;
         mpl = dtp->sv->MPL;
         spin_unlock_bh(&dtp->sv_lock);
@@ -628,7 +626,7 @@ static void tf_a(void * o)
         if (dtcp) {
                 if (dtcp_sending_ack_policy(dtcp)){
                         LOG_ERR("sending_ack failed");
-                        rtimer_start(dtp->timers.a, a/AF);
+                        rtimer_start(dtp->timers.a, a);
                 }
                 while (!ringq_is_empty(dtp->to_send)) {
                         struct du * pdu_ctrl;
@@ -644,16 +642,15 @@ static void tf_a(void * o)
                 if (rtimer_restart(dtp->timers.sender_inactivity,
                                    3 * (mpl + r + a))) {
                         LOG_ERR("Failed to start sender_inactiviy timer");
-                        rtimer_start(dtp->timers.a, a/AF);
+                        rtimer_start(dtp->timers.a, a);
                         return;
                 }
 #endif
         }
 
         if (!seqq_is_empty(dtp->seqq)) {
-                LOG_DBG("Going to restart A timer with a = %d and a/AF = %d",
-                        a, a/AF);
-                rtimer_start(dtp->timers.a, a/AF);
+                LOG_DBG("Going to restart A timer with a = %d", a);
+                rtimer_start(dtp->timers.a, a);
         }
 
         return;
@@ -1144,7 +1141,7 @@ static bool window_is_closed(struct dtp *    dtp,
         }
 
         if (dtp->sv->rate_based) {
-        	if(dtcp_rate_exceeded(dtcp, 1)) {
+        	if (dtcp_rate_exceeded(dtcp, 1)) {
         		dtp->sv->rate_fulfiled = true;
         		r_ret = true;
 		} else {
@@ -1162,7 +1159,7 @@ static bool window_is_closed(struct dtp *    dtp,
 
         retval = (w_ret || r_ret);
 
-        if(w_ret && r_ret)
+        if (w_ret && r_ret)
         	retval = ps->reconcile_flow_conflict(ps);
 
         return retval;
@@ -1247,6 +1244,7 @@ int dtp_write(struct dtp * instance,
         mpl = instance->sv->MPL;
         r = instance->sv->R;
         a = instance->sv->A;
+        if (!a) a = AMIN;
         spin_unlock_bh(&instance->sv_lock);
 
         if (dtcp) {
@@ -1385,7 +1383,7 @@ static bool are_there_pdus(struct seq_queue * queue, seq_num_t LWE)
                 return false;
 
         sn = pci_sequence_number_get(&p->du->pci);
-        if (sn == (LWE+1))
+        if (sn <= (LWE+1))
                 return true;
 
         return false;
@@ -1421,6 +1419,7 @@ int dtp_receive(struct dtp * instance,
         r 	    = instance->sv->R;
         mpl	    = instance->sv->MPL;
         LWE         = instance->sv->rcv_left_window_edge;
+        if (!a) a = AMIN;
         rcu_read_lock();
         ps = container_of(rcu_dereference(instance->base.ps),
                           struct dtp_ps, base);
@@ -1516,58 +1515,17 @@ int dtp_receive(struct dtp * instance,
                 return -1;
         }
 #endif
-        if (!a) {
-                bool set_lft_win_edge;
-
-                /* FIXME: delimiting goes here */
-                if (!in_order && !dtcp) {
-                	spin_unlock_bh(&instance->sv_lock);
-                        LOG_DBG("DTP Receive deliver, seq_num: %d, LWE: %d",
-                                seq_num, LWE);
-                        if (pdu_post(instance, du))
-                                return -1;
-
-                        return 0;
-                }
-
-                set_lft_win_edge = !(dtcp_rtx_ctrl(dtcp->cfg) &&
-                                     ((seq_num -LWE) > (max_sdu_gap + 1)));
-                if (set_lft_win_edge)
-                	instance->sv->rcv_left_window_edge = seq_num;
-
-                spin_unlock_bh(&instance->sv_lock);
-
-                if (dtcp) {
-                        if (dtcp_sv_update(dtcp, &du->pci)) {
-                                LOG_ERR("Failed to update dtcp sv");
-                                goto fail;
-                        }
-                        while (!ringq_is_empty(instance->to_send)) {
-                                struct du * du_ctrl;
-                                du_ctrl = ringq_pop(instance->to_send);
-                                if (du_ctrl) {
-                                       dtp_pdu_send(instance, instance->rmt, du_ctrl);
-                                }
-                        }
-                        if (!set_lft_win_edge) {
-                                du_destroy(du);
-                                return 0;
-                        }
-                }
-
+        if (!in_order && !dtcp) {
+        	spin_unlock_bh(&instance->sv_lock);
+                LOG_DBG("DTP Receive deliver, seq_num: %d, LWE: %d",
+                        seq_num, LWE);
                 if (pdu_post(instance, du))
                         return -1;
 
-                spin_lock_bh(&instance->sv_lock);
-		stats_inc_bytes(rx, instance->sv, sbytes);
-		spin_unlock_bh(&instance->sv_lock);
                 return 0;
-
-        fail:
-                du_destroy(du);
-                return -1;
         }
 
+        /*put DU in the seq queue if needed*/
         LWE = instance->sv->rcv_left_window_edge;
         LOG_DBG("DTP receive LWE: %u", LWE);
         if (seq_num == LWE + 1) {
@@ -1575,10 +1533,11 @@ int dtp_receive(struct dtp * instance,
                 ringq_push(instance->to_post, du);
                 LWE = seq_num;
         } else {
-                seq_queue_push_ni(instance->seqq->queue, du);
+		seq_queue_push_ni(instance->seqq->queue, du);
         }
 
-        while (are_there_pdus(instance->seqq->queue, LWE)) {
+        /*process the seq queue*/
+        while (are_there_pdus(instance->seqq->queue, LWE + max_sdu_gap)) {
                 du = seq_queue_pop(instance->seqq->queue);
                 if (!du)
                         break;
@@ -1589,6 +1548,7 @@ int dtp_receive(struct dtp * instance,
         }
         spin_unlock_bh(&instance->sv_lock);
 
+        /*Notify DTCP*/
         if (dtcp) {
                 if (dtcp_sv_update(dtcp, &du->pci)) {
                         LOG_ERR("Failed to update dtcp sv");
@@ -1605,7 +1565,7 @@ int dtp_receive(struct dtp * instance,
         if (list_empty(&instance->seqq->queue->head))
                 rtimer_stop(instance->timers.a);
         else
-                rtimer_start(instance->timers.a, a/AF);
+                rtimer_start(instance->timers.a, a);
 
         while (!ringq_is_empty(instance->to_post)) {
                 du = (struct du *) ringq_pop(instance->to_post);
