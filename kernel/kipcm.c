@@ -2318,7 +2318,7 @@ port_id_t kipcm_flow_create(struct kipcm     *kipcm,
                 return port_id_bad();
         }
 
-        pid = kfa_port_id_reserve(kipcm->kfa, ipc_id, GFP_KERNEL);
+        pid = kfa_port_id_reserve(kipcm->kfa, ipc_id, GFP_ATOMIC);
         if (!is_port_id_ok(pid)) {
                 KIPCM_UNLOCK(kipcm);
                 return port_id_bad();
