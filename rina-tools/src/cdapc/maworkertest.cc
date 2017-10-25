@@ -136,7 +136,7 @@ TEST_CASE( "Test Connection identifiers", "[Basic]") {
     SECTION("ConnectionInfo and MA identify the same flow") {
       ConnectionInfo info(flow);
       
-      //REQUIRE(info.get_id() == flow.remoteAppName.getProcessNamePlusInstance());
+      REQUIRE(info.get_id() == flow.remoteAppName.getProcessNamePlusInstance());
     }
 }
 
@@ -157,7 +157,7 @@ TEST_CASE("Flow management", "[Flow]") {
     flow1.portId = 2;
     REQUIRE_NOTHROW(w.newFlowRequest(flow1));
     
-    //REQUIRE(w.count_flows() == 1);
+    REQUIRE(w.count_flows() == 1);
     REQUIRE(w.check_flow(flow1.remoteAppName.getProcessNamePlusInstance()));
 
     rina::FlowInformation flow2;
