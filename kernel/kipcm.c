@@ -2129,17 +2129,16 @@ int kipcm_ipc_destroy(struct kipcm *   kipcm,
         factory = instance->factory;
         ASSERT(factory);
 
-        if (factory->ops->destroy(factory->data, instance)) {
-                KIPCM_UNLOCK(kipcm);
-                return -1;
-        }
-
         if (ipcp_imap_remove(kipcm->instances, id)) {
                 KIPCM_UNLOCK(kipcm);
                 return -1;
         }
 
         KIPCM_UNLOCK(kipcm);
+
+        if (factory->ops->destroy(factory->data, instance)) {
+                return -1;
+        }
 
         return 0;
 }
