@@ -702,7 +702,8 @@ EXPORT_SYMBOL(pci_control_time_frame_set);
 int pci_get(struct pci *pci)
 {
 	struct du *du;
-	ASSERT(pci_is_ok(pci));
+	if (!pci_is_ok(pci))
+		return 0;
 
 	du = container_of(pci, struct du, pci);
 	if (!du)
