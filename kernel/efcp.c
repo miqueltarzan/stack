@@ -544,6 +544,7 @@ cep_id_t efcp_connection_create(struct efcp_container * container,
         struct dtp_ps       * dtp_ps;
         bool                dtcp_present;
         struct delim * delim;
+        struct rttq *       rttq;
 
         if (!container) {
                 LOG_ERR("Bogus container passed, bailing out");
@@ -670,6 +671,14 @@ cep_id_t efcp_connection_create(struct efcp_container * container,
                         return cep_id_bad();
                 }
                 efcp->dtp->rtxq = rtxq;
+        } else {
+        		rttq = rttq_create();
+        		if (!rttq) {
+        			LOG_ERR("Failed to create RTT queue");
+        			efcp_destroy(efcp);
+        			return cep_id_bad();
+        		}
+        		efcp->dtp->rttq = rttq;
         }
 
         efcp->dtp->efcp = efcp;
