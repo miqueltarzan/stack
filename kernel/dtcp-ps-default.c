@@ -372,9 +372,10 @@ int default_rcvr_rendezvous(struct dtcp_ps * ps, const struct pci * pci)
         	}
 
     		dtcp->sv->rcvr_rt_wind_edge = snd_lft + dtcp->sv->rcvr_credit;
-    		/*this would be enough as a normal ACK to the RV packet,
-    		/* however, we need something specific for the reliable ACK
-    		/* that is, a timer :( */
+    		/* This would be enough as a normal ACK to the RV packet,
+    		 * however, we need something specific for the reliable ACK
+    		 * that is, a timer :(
+    		 */
         }
 
         if (dtcp->sv->flow_ctl && dtcp->parent->sv->rate_based) {
