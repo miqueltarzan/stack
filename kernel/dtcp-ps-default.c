@@ -402,7 +402,7 @@ int default_rcvr_rendezvous(struct dtcp_ps * ps, const struct pci * pci)
         if (!du)
                 return -1;
 
-        LOG_INFO("DTCP Sending FC (CPU: %d)", smp_processor_id());
+        LOG_DBG("DTCP Sending FC (CPU: %d)", smp_processor_id());
         dump_we(dtcp, &du->pci);
 
         if (dtcp_pdu_send(dtcp, du))

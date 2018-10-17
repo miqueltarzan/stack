@@ -1364,7 +1364,7 @@ int dtp_write(struct dtp * instance,
 				spin_unlock_bh(&instance->sv_lock);
 
 				if (start_rv_timer) {
-					LOG_INFO("Window is closed. SND LWE: %d | SND RWE: %d | TR: %d",
+					LOG_DBG("Window is closed. SND LWE: %d | SND RWE: %d | TR: %d",
 							instance->dtcp->sv->snd_lft_win,
 							instance->dtcp->sv->snd_rt_wind_edge,
 							instance->sv->tr);
