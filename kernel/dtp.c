@@ -1322,7 +1322,7 @@ int dtp_write(struct dtp * instance,
 
         sn = dtcp->sv->snd_lft_win;
         if (instance->sv->drf_flag ||
-        	( (sn == (csn - 1)) && instance->sv->rexmsn_ctrl) ) {
+        		((sn == (csn - 1)) && instance->sv->rexmsn_ctrl)) {
 		pdu_flags_t pci_flags;
 		pci_flags = pci_flags_get(&du->pci);
 		pci_flags |= PDU_FLAGS_DATA_RUN;
