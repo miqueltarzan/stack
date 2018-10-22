@@ -543,8 +543,8 @@ cep_id_t efcp_connection_create(struct efcp_container * container,
         timeout_t           mpl, a, r = 0, tr = 0;
         struct dtp_ps       * dtp_ps;
         bool                dtcp_present;
-        struct delim * delim;
         struct rttq *       rttq;
+        struct delim * delim;
 
         if (!container) {
                 LOG_ERR("Bogus container passed, bailing out");
