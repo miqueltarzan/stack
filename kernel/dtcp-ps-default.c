@@ -316,26 +316,26 @@ int default_rtt_estimator(struct dtcp_ps * ps, seq_num_t sn)
 
 int default_rtt_estimator_nortx(struct dtcp_ps * ps, seq_num_t sn)
 {
-		struct dtcp *       dtcp;
-		timeout_t           start_time;
+	struct dtcp *       dtcp;
+	timeout_t           start_time;
 
-		if (!ps)
-				return -1;
-		dtcp = ps->dm;
-		if (!dtcp)
-				return -1;
+	if (!ps)
+		return -1;
+	dtcp = ps->dm;
+	if (!dtcp)
+		return -1;
 
-		LOG_DBG("RTT Estimator with only flow control...");
+	LOG_DBG("RTT Estimator with only flow control...");
 
-		start_time = rttq_entry_timestamp(dtcp->parent->rttq, sn);
-		if (start_time == 0) {
-				LOG_DBG("RTTestimator: PDU %u has been retransmitted", sn);
-				return 0;
-		}
-
-		rtt_calculation(ps, start_time);
-
+	start_time = rttq_entry_timestamp(dtcp->parent->rttq, sn);
+	if (start_time == 0) {
+		LOG_DBG("RTTestimator: PDU %u has been retransmitted", sn);
 		return 0;
+	}
+
+	rtt_calculation(ps, start_time);
+
+	return 0;
 }
 
 int default_rcvr_rendezvous(struct dtcp_ps * ps, const struct pci * pci)
@@ -370,15 +370,11 @@ int default_rcvr_rendezvous(struct dtcp_ps * ps, const struct pci * pci)
         	if (dtcp->sv->snd_rt_wind_edge != rcv_rt) {
         		/* TODO what to do? */
         	}
-    		LOG_DBG("RCVR rendezvous. RCV LWE: %d | RCV RWE: %d || SND LWE: %d | SND RWE: %d",
+    		LOG_DBG("RCVR rendezvous. RCV LWE: %u | RCV RWE: %u || SND LWE: %u | SND RWE: %u",
 					dtcp->parent->sv->rcv_left_window_edge, dtcp->sv->rcvr_rt_wind_edge,
 					snd_lft, snd_rt);
 
     		dtcp->sv->rcvr_rt_wind_edge = snd_lft + dtcp->sv->rcvr_credit;
-    		/* This would be enough as a normal ACK to the RV packet,
-    		 * however, we need something specific for the reliable ACK
-    		 * that is, a timer :(
-    		 */
         }
 
         if (dtcp->sv->flow_ctl && dtcp->parent->sv->rate_based) {
@@ -405,7 +401,6 @@ int default_rcvr_rendezvous(struct dtcp_ps * ps, const struct pci * pci)
         if (!du)
                 return -1;
 
-        LOG_DBG("DTCP Sending FC (CPU: %d)", smp_processor_id());
         dump_we(dtcp, &du->pci);
 
         if (dtcp_pdu_send(dtcp, du))

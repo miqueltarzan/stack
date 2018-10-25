@@ -237,7 +237,12 @@ static void tf_rendezvous_rcv(struct timer_list * tl)
 	spin_unlock_bh(&dtp->sv_lock);
 
 	if (start_rv_rcv_timer) {
+<<<<<<< HEAD
 		LOG_DBG("DTCP Sending FC (CPU: %d)", smp_processor_id());
+=======
+		LOG_INFO("DTCP Sending FC: RCV LWE: %u | RCV RWE: %u",
+					dtp->sv->rcv_left_window_edge, dtcp->sv->rcvr_rt_wind_edge);
+>>>>>>> 34298a1b2c33f6f99eacfbf5353ec8ce82f843b7
 		/* Send rendezvous PDU and start timer */
 		ctrl_pdu_send(dtcp, PDU_TYPE_FC, true);
 		rtimer_start(&dtcp->rendezvous_rcv, rv);
@@ -565,8 +570,21 @@ static int rcv_flow_ctl(struct dtcp * dtcp,
 
     	rcu_read_unlock();
 
+<<<<<<< HEAD
     	rttq_drop(dtcp->parent->rttq, seq-credit);
     	LOG_DBG("New RTT estimation: %u", dtcp->parent->sv->tr);
+=======
+    	spin_lock_bh(&dtcp->parent->sv_lock);
+    	if (dtcp->sv->rendezvous_sndr) {
+    		dtcp->sv->rendezvous_sndr = false;
+        	rtimer_stop(&dtcp->parent->timers.rendezvous);
+    	}
+    	spin_unlock_bh(&dtcp->parent->sv_lock);
+    	if (dtcp->parent->rttq) {
+    		rttq_drop(dtcp->parent->rttq, seq-credit);
+    	}
+    	LOG_INFO("New RTT estimation: %u", dtcp->parent->sv->tr);
+>>>>>>> 34298a1b2c33f6f99eacfbf5353ec8ce82f843b7
 
     	return update_window_and_rate(dtcp, du);
 }
