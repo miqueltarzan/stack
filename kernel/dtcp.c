@@ -171,7 +171,7 @@ RINA_SYSFS_OPS(dtcp);
 RINA_ATTRS(dtcp, rtt, srtt, rttvar, ps_name);
 RINA_KTYPE(dtcp);
 
-static int ctrl_pdu_send(struct dtcp * dtcp, pdu_type_t type, bool direct)
+int ctrl_pdu_send(struct dtcp * dtcp, pdu_type_t type, bool direct)
 {
         struct du *   du;
 
@@ -238,6 +238,7 @@ static void tf_rendezvous_rcv(struct timer_list * tl)
 		LOG_DBG("DTCP Sending FC: RCV LWE: %u | RCV RWE: %u",
 					dtp->sv->rcv_left_window_edge, dtcp->sv->rcvr_rt_wind_edge);
 		/* Send rendezvous PDU and start timer */
+    	atomic_inc(&dtcp->cpdus_in_transit);
 		ctrl_pdu_send(dtcp, PDU_TYPE_FC, true);
 		rtimer_start(&dtcp->rendezvous_rcv, rv);
 	}
@@ -336,6 +337,13 @@ static int populate_ctrl_pci(struct pci *  pci,
                 }
                 return 0;
         case PDU_TYPE_RENDEZVOUS:
+        {
+        	LOG_INFO("sndLWE: %u, sndRWE: %u, rcvLWE: %u, rcvRWE: %u",
+        			pci_control_my_left_wind_edge(pci),
+					pci_control_my_rt_wind_edge(pci),
+					pci_control_new_left_wind_edge(pci),
+					pci_control_new_rt_wind_edge(pci));
+        }
         case PDU_TYPE_CACK:
         	if (pci_control_last_seq_num_rcvd_set(pci, last_rcv_ctl_seq)) {
 			LOG_ERR("Could not set last ctrl sn rcvd");
@@ -524,7 +532,6 @@ static int rcv_flow_ctl(struct dtcp * dtcp,
     	if (dtcp->parent->rttq) {
     		rttq_drop(dtcp->parent->rttq, seq-credit);
     	}
-    	LOG_INFO("New RTT estimation: %u", dtcp->parent->sv->tr);
 
     	return update_window_and_rate(dtcp, du);
 }
