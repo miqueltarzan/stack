@@ -1402,10 +1402,10 @@ int dtp_write(struct dtp * instance,
                                 LOG_ERR("Couldn't push to rtxq");
                                 goto pdu_stats_err_exit;
                         }
-                } else {
-                		if (rttq_push(instance->rttq, csn)) {
-                				LOG_ERR("Failed to push SN");
-                		}
+                } else if (instance->sv->window_based) {
+                	if (rttq_push(instance->rttq, csn)) {
+                		LOG_ERR("Failed to push SN");
+                	}
                 }
 
                 if (ps->transmission_control(ps, du)) {
