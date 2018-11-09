@@ -249,6 +249,7 @@ void cwq_deliver(struct cwq * queue,
         bool			rate_ctrl = false;
         int 			sz = 0;
 	uint_t 			sc = 0;
+        struct du * to_send = NULL;
 
 	dtcp = dtp->dtcp;
 
@@ -311,7 +312,8 @@ void cwq_deliver(struct cwq * queue,
                 dtp->sv->max_seq_nr_sent = pci_sequence_number_get(&du->pci);
                 dtcp->sv->snd_lft_win = dtp->sv->max_seq_nr_sent;
 
-                dtp_pdu_send(dtp, rmt, du);
+                to_send = du;
+
         }
 
         if (!can_deliver(dtp, dtcp)) {
@@ -344,7 +346,11 @@ void cwq_deliver(struct cwq * queue,
 
         enable_write(queue, dtp);
 
-        spin_unlock(&queue->lock);
+        spin_unlock_bh(&dtcp->parent->sv_lock);
+
+        if (to_send) {
+                dtp_pdu_send(dtp, rmt, to_send);
+        }
 
         LOG_DBG("CWQ has delivered until %u", dtp->sv->max_seq_nr_sent);
         return;
