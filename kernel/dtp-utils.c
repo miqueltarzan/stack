@@ -192,13 +192,28 @@ static void enable_write(struct cwq * cwq,
                          struct dtp *  dtp)
 {
         struct dtcp_config * cfg;
+        struct dtcp * dtcp;
 
         cfg = dtp->dtcp->cfg;
         if (!cfg)
                 return;
+        
+        dtcp = dtp->dtcp;
+        if (!dtcp) {
+                return;
+        }
 
-        if (rqueue_length(cwq->q) == 0)
+        if (rqueue_length(cwq->q) == 0) {
+                if(dtcp_window_based_fctrl(dtcp->cfg)) {
+                        dtp->sv->window_closed = false;
+                }
+
+                if(dtcp_rate_based_fctrl(dtcp->cfg)) {
+                        //LOG_DBG("rbfc Re-opening the rate mechanism");
+                        dtp->sv->rate_fulfiled = true;
+                }
                 efcp_enable_write(dtp->efcp);
+        }
 
         return;
 }
@@ -335,15 +350,6 @@ void cwq_deliver(struct cwq * queue,
                 return;
         }
 
-        if(dtcp_window_based_fctrl(dtcp->cfg)) {
-		dtp->sv->window_closed = false;
-        }
-
-        if(dtcp_rate_based_fctrl(dtcp->cfg)) {
-        	//LOG_DBG("rbfc Re-opening the rate mechanism");
-                dtp->sv->rate_fulfiled = true;
-        }
-
         enable_write(queue, dtp);
 
         spin_unlock_bh(&dtcp->parent->sv_lock);
@@ -352,7 +358,7 @@ void cwq_deliver(struct cwq * queue,
                 dtp_pdu_send(dtp, rmt, to_send);
         }
 
-        LOG_DBG("CWQ has delivered until %u", dtp->sv->max_seq_nr_sent);
+        LOG_INFO("CWQ has delivered until %u", dtp->sv->max_seq_nr_sent);
         return;
 }
 
