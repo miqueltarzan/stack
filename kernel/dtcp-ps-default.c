@@ -318,26 +318,26 @@ int default_rtt_estimator(struct dtcp_ps * ps, seq_num_t sn)
 
 int default_rtt_estimator_nortx(struct dtcp_ps * ps, seq_num_t sn)
 {
-		struct dtcp *       dtcp;
-		timeout_t           start_time;
+	struct dtcp *       dtcp;
+	timeout_t           start_time;
 
-		if (!ps)
-				return -1;
-		dtcp = ps->dm;
-		if (!dtcp)
-				return -1;
+	if (!ps)
+		return -1;
+	dtcp = ps->dm;
+	if (!dtcp)
+		return -1;
 
-		LOG_DBG("RTT Estimator with only flow control...");
+	LOG_DBG("RTT Estimator with only flow control...");
 
-		start_time = rttq_entry_timestamp(dtcp->parent->rttq, sn);
-		if (start_time == 0) {
-				LOG_DBG("RTTestimator: PDU %u has been retransmitted", sn);
-				return 0;
-		}
-
-		rtt_calculation(ps, start_time);
-
+	start_time = rttq_entry_timestamp(dtcp->parent->rttq, sn);
+	if (start_time == 0) {
+		LOG_DBG("RTTestimator: PDU %u has been retransmitted", sn);
 		return 0;
+	}
+
+	rtt_calculation(ps, start_time);
+
+	return 0;
 }
 
 int default_rcvr_rendezvous(struct dtcp_ps * ps, const struct pci * pci)

@@ -204,8 +204,8 @@ void ActiveWorker::allocateFlow()
 	// Reliable and in-order delivery required
 	rina_flow_spec_unreliable(&fspec);
 	fspec.msg_boundaries = true;
-	//fspec.in_order_delivery = true;
-	//fspec.max_sdu_gap = 0;
+	fspec.in_order_delivery = true;
+	fspec.max_sdu_gap = 0;
 
 	remote_name = rina_name_create();
 	remote_name->process_name = strdup(con.flow_info.remoteAppName.processName.c_str());

@@ -1364,7 +1364,7 @@ int dtp_write(struct dtp * instance,
 				spin_unlock_bh(&instance->sv_lock);
 
 				if (start_rv_timer) {
-					LOG_INFO("Window is closed. SND LWE: %u | SND RWE: %u | TR: %u",
+					LOG_DBG("Window is closed. SND LWE: %d | SND RWE: %d | TR: %d",
 							instance->dtcp->sv->snd_lft_win,
 							instance->dtcp->sv->snd_rt_wind_edge,
 							instance->sv->tr);
@@ -1402,10 +1402,10 @@ int dtp_write(struct dtp * instance,
                                 LOG_ERR("Couldn't push to rtxq");
                                 goto pdu_stats_err_exit;
                         }
-                } else {
-                		if (rttq_push(instance->rttq, csn)) {
-                				LOG_ERR("Failed to push SN");
-                		}
+                } else if (instance->sv->window_based) {
+                	if (rttq_push(instance->rttq, csn)) {
+                		LOG_ERR("Failed to push SN");
+                	}
                 }
 
                 if (ps->transmission_control(ps, du)) {
