@@ -192,14 +192,12 @@ static void enable_write(struct cwq * cwq,
                          struct dtp *  dtp)
 {
         struct dtcp_config * cfg;
-        uint_t               max_len;
 
         cfg = dtp->dtcp->cfg;
         if (!cfg)
                 return;
 
-        max_len = dtcp_max_closed_winq_length(cfg);
-        if (rqueue_length(cwq->q) < max_len)
+        if (rqueue_length(cwq->q) == 0)
                 efcp_enable_write(dtp->efcp);
 
         return;
@@ -261,25 +259,25 @@ void cwq_deliver(struct cwq * queue,
         	rate_ctrl = dtcp_rate_based_fctrl(dtcp->cfg);
         }
 
-        spin_lock(&queue->lock);
+        spin_lock_bh(&dtcp->parent->sv_lock);
         while (!rqueue_is_empty(queue->q) && can_deliver(dtp, dtcp)) {
                 struct du *       du;
 
                 du = (struct du *) rqueue_head_pop(queue->q);
                 if (!du) {
-                        spin_unlock(&queue->lock);
+                        spin_unlock_bh(&dtcp->parent->sv_lock);
                         return;
                 }
                 if (rtx_ctrl) {
                         rtxq = dtp->rtxq;
                         if (!rtxq) {
-                                spin_unlock(&queue->lock);
+                                spin_unlock_bh(&dtcp->parent->sv_lock);
                                 LOG_ERR("Couldn't find the RTX queue");
                                 return;
                         }
                         tmp = du_dup_ni(du);
                         if (!tmp) {
-                                spin_unlock(&queue->lock);
+                                spin_unlock_bh(&dtcp->parent->sv_lock);
                                 return;
                         }
                         rtxq_push_ni(rtxq, tmp);
@@ -320,7 +318,7 @@ void cwq_deliver(struct cwq * queue,
                 }
 
                 enable_write(queue, dtp);
-                spin_unlock(&queue->lock);
+                spin_unlock_bh(&dtcp->parent->sv_lock);
                 return;
         }
 
