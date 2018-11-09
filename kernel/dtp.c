@@ -1208,6 +1208,9 @@ static bool window_is_closed(struct dtp *    dtp,
         ASSERT(dtcp);
 
         spin_lock_bh(&dtp->sv_lock);
+        if (dtp->sv->window_based && dtp->sv->window_closed) {
+                return true;
+        }
         if (dtp->sv->window_based && seq_num > dtcp->sv->snd_rt_wind_edge) {
         	dtp->sv->window_closed = true;
                 w_ret = true;

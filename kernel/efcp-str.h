@@ -95,6 +95,7 @@ struct rtxq_entry {
 
 struct cwq {
         struct rqueue * q;
+        struct ringq  * to_send;
         spinlock_t      lock;
 };
 

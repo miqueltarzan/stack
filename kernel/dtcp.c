@@ -175,17 +175,10 @@ int ctrl_pdu_send(struct dtcp * dtcp, pdu_type_t type, bool direct)
 {
         struct du *   du;
 
-        if (dtcp->sv->rendezvous_rcvr) {
-        	LOG_INFO("Generating FC PDU in RV at RCVR");
-        }
-
         du  = pdu_ctrl_generate(dtcp, type);
         if (!du) {
         	atomic_dec(&dtcp->cpdus_in_transit);
         	return -1;
-        }
-        if (dtcp->sv->rendezvous_rcvr) {
-        	LOG_INFO("Generated FC PDU in RV at RCVR");
         }
 
         if (direct) {
@@ -481,7 +474,7 @@ static int update_window_and_rate(struct dtcp * dtcp,
 				rt, tf);
 		}
         }
-        LOG_INFO("New SND RWE: %u, New LWE: %u", dtcp->sv->snd_rt_wind_edge, dtcp->sv->snd_lft_win);
+        LOG_DBG("New SND RWE: %u, New LWE: %u", dtcp->sv->snd_rt_wind_edge, dtcp->sv->snd_lft_win);
 
         /* Check if rendezvous timer is active */
         cancel_rv_timer = false;

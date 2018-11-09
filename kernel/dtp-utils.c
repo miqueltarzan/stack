@@ -38,6 +38,7 @@
 #include "dtp-ps.h"
 
 #define RTIMER_ENABLED 1
+#define TO_SEND_LENGTH 1000
 
 /* Maximum retransmission time is 60 seconds */
 #define MAX_RTX_WAIT_TIME msecs_to_jiffies(60000)
@@ -55,6 +56,13 @@ struct cwq * cwq_create(void)
                 LOG_ERR("Failed to create closed window queue");
                 rkfree(tmp);
                 return NULL;
+        }
+
+        tmp->to_send = ringq_create(TO_SEND_LENGTH);
+        if (!tmp->to_send) {
+                LOG_ERR("Unable to create to_post queue; bailing out");
+               cwq_destroy(tmp);
+               return NULL;
         }
 
         spin_lock_init(&tmp->lock);
@@ -77,6 +85,13 @@ struct cwq * cwq_create_ni(void)
                 return NULL;
         }
 
+        tmp->to_send = ringq_create_ni(TO_SEND_LENGTH);
+        if (!tmp->to_send) {
+                LOG_ERR("Unable to create to_post queue; bailing out");
+               cwq_destroy(tmp);
+               return NULL;
+        }
+
         spin_lock_init(&tmp->lock);
 
         return tmp;
@@ -93,6 +108,8 @@ int cwq_destroy(struct cwq * queue)
                 LOG_ERR("Failed to destroy closed window queue");
                 return -1;
         }
+        if (queue->to_send) ringq_destroy(queue->to_send,
+                               (void (*)(void *)) du_destroy);
 
         rkfree(queue);
 
@@ -264,7 +281,6 @@ void cwq_deliver(struct cwq * queue,
         bool			rate_ctrl = false;
         int 			sz = 0;
 	uint_t 			sc = 0;
-        struct du * to_send = NULL;
 
 	dtcp = dtp->dtcp;
 
@@ -327,7 +343,7 @@ void cwq_deliver(struct cwq * queue,
                 dtp->sv->max_seq_nr_sent = pci_sequence_number_get(&du->pci);
                 dtcp->sv->snd_lft_win = dtp->sv->max_seq_nr_sent;
 
-                to_send = du;
+                ringq_push(queue->to_send, du);
 
         }
 
@@ -354,11 +370,14 @@ void cwq_deliver(struct cwq * queue,
 
         spin_unlock_bh(&dtcp->parent->sv_lock);
 
-        if (to_send) {
-                dtp_pdu_send(dtp, rmt, to_send);
+        while (!ringq_is_empty(queue->to_send)) {
+                struct du * du = (struct du *) ringq_pop(queue->to_send);
+                if (du) {
+                        dtp_pdu_send(dtp, rmt, du);
+                        LOG_INFO("CWQ has delivered until %u", pci_sequence_number_get(&du->pci));
+		}
         }
 
-        LOG_INFO("CWQ has delivered until %u", dtp->sv->max_seq_nr_sent);
         return;
 }
 
